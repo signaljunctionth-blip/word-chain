@@ -1,0 +1,1396 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="เกมคำต้องเชื่อม ผลัดกันตอบคำนามที่ความหมายเชื่อมกัน เล่นในเครื่องหรือออนไลน์กับเพื่อน">
+<title>คำต้องเชื่อม</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sriracha&family=Anuphan:wght@400;500;600&display=swap">
+<style>
+/* Layout: คอลัมน์เดียวกลางจอ 3 หน้า — หน้าแรก, ห้องรอ (ออนไลน์), เกม; คำปัจจุบันตัวใหญ่เป็นจุดเดียวที่เด่น */
+:root {
+  --bg: #FBFBFD; --surface: #FFFFFF; --line: #E5E8EF; --ink: #15181F; --muted: #6B7280;
+  --accent: #2B4FD8; --accent-soft: #ECF0FC; --hot: #D6404F; --hot-soft: #FCEBED; --good: #1C8A57;
+  --qr-bg: #FFFFFF;
+  --f-hand: "Sriracha", "Anuphan", cursive;
+  --f-body: "Anuphan", "Sarabun", "Thonburi", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0D0F14; --surface: #151922; --line: #262C38; --ink: #EDEFF4; --muted: #9AA1AE;
+  --accent: #8EA6FF; --accent-soft: #1C2440; --hot: #F27583; --hot-soft: #3A1D24; --good: #52C690; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0D0F14; --surface: #151922; --line: #262C38; --ink: #EDEFF4; --muted: #9AA1AE;
+  --accent: #8EA6FF; --accent-soft: #1C2440; --hot: #F27583; --hot-soft: #3A1D24; --good: #52C690; color-scheme: dark }
+
+[hidden] { display: none !important }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px) }
+* { box-sizing: border-box }
+html, body { min-height: 100% }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.55; margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 14px 32px }
+.app { max-width: 600px; margin: 0 auto; display: grid; gap: 20px }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0 }
+button:disabled { opacity: .4; cursor: default }
+input { font: inherit; color: inherit }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px }
+@keyframes drop { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: none } }
+@keyframes rise { from { opacity: 0; transform: translateY(14px) scale(.96) } to { opacity: 1; transform: none } }
+@keyframes shake { 20%, 60% { transform: translateX(-6px) } 40%, 80% { transform: translateX(6px) } }
+
+/* แถบบน */
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px }
+.brand { font-family: var(--f-hand); font-size: 1.3rem; color: var(--accent) }
+.acts { display: flex; gap: 2px }
+.link { font-size: .88rem; color: var(--muted); padding: 6px 10px; border-radius: 999px; white-space: nowrap }
+.link:hover:not(:disabled), .link[aria-expanded="true"], .link[aria-pressed="true"] { color: var(--ink); background: var(--accent-soft) }
+.link.danger { color: var(--hot) }
+
+/* ส่วนประกอบร่วม */
+.screen { display: grid; gap: 18px; animation: drop .2s ease-out }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px; display: grid; gap: 14px }
+.opt { display: flex; align-items: center; justify-content: space-between; gap: 10px 12px; flex-wrap: wrap }
+.opt > span:first-child { font-size: .95rem }
+.opt small { display: block; color: var(--muted); font-size: .78rem }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 999px; padding: 2px; background: var(--surface) }
+.seg button { font-size: .85rem; padding: 5px 12px; border-radius: 999px; color: var(--muted) }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface) }
+.seg.wide { display: flex; width: 100% }
+.seg.wide button { flex: 1; padding: 9px 12px; font-size: .95rem }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px }
+.stepper button { width: 40px; height: 40px; font-size: 1.25rem; color: var(--accent) }
+.stepper output { min-width: 2ch; text-align: center; font: 400 1.4rem var(--f-hand); font-variant-numeric: tabular-nums }
+.switch { appearance: none; width: 42px; height: 26px; border-radius: 999px; background: var(--line); position: relative; cursor: pointer; margin: 0; transition: background .2s; flex: none }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); transition: transform .2s }
+.switch:checked { background: var(--accent) }
+.switch:checked::after { transform: translateX(16px) }
+.text { width: 100%; min-width: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; outline: none }
+.text:focus { border-color: var(--accent) }
+.start { justify-self: center; background: var(--accent); color: var(--surface); font: 600 1.05rem var(--f-body); border-radius: 999px; padding: 13px 44px; box-shadow: 0 6px 20px -10px var(--accent); transition: transform .15s }
+.start:hover:not(:disabled) { transform: translateY(-2px) }
+.pill { background: var(--accent); color: var(--surface); font-weight: 600; border-radius: 999px; padding: 9px 22px }
+.pill.ghost { background: transparent; color: var(--accent); border: 1.5px solid var(--accent) }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center }
+.row.center { justify-content: center }
+.small { font-size: .82rem; color: var(--muted); margin: 0 }
+.small.err { color: var(--hot) }
+.center { text-align: center }
+h3 { margin: 0; font-size: .75rem; font-weight: 600; letter-spacing: .06em; color: var(--muted) }
+
+/* หน้าแรก */
+.hero { text-align: center; display: grid; gap: 6px; padding-top: 10px }
+.hero h1 { font-family: var(--f-hand); font-weight: 400; font-size: clamp(2.8rem, 12vw, 4rem); line-height: 1.1; margin: 0; text-wrap: balance }
+.hero p { margin: 0; color: var(--muted); text-wrap: balance }
+.names { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px }
+.names label { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 4px 10px; min-width: 0 }
+.names label span { font: 400 1rem var(--f-hand); color: var(--accent) }
+.names input { min-width: 0; width: 100%; background: transparent; border: 0; padding: 4px 0; outline: none; font-weight: 500 }
+.names .botname { color: var(--muted); font-size: .9rem; padding: 4px 0 }
+details.rules summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 12px; align-items: baseline }
+details.rules summary::-webkit-details-marker { display: none }
+details.rules summary b { font-weight: 600 }
+details.rules summary span { font-size: .8rem; color: var(--muted); text-align: right }
+details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
+.join { display: flex; gap: 8px }
+.join .text { text-transform: uppercase; letter-spacing: .2em; font-weight: 600; max-width: 140px }
+.rooms { display: grid; gap: 6px }
+.rooms:empty { display: none }
+.roomitem { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px }
+.roomitem b { font-family: var(--f-hand); font-weight: 400; font-size: 1.2rem; letter-spacing: .1em; color: var(--accent) }
+.roomitem span { font-size: .82rem; color: var(--muted); flex: 1; min-width: 0 }
+
+/* ห้องรอ */
+.code { font-family: var(--f-hand); font-size: clamp(3rem, 16vw, 4.6rem); letter-spacing: .18em; color: var(--accent); line-height: 1.1 }
+.qr { justify-self: center; background: var(--qr-bg); padding: 12px; border-radius: 16px; width: 200px; max-width: 100%; box-shadow: 0 0 0 1px var(--line) }
+.qr svg { display: block; width: 100%; height: auto }
+.qr:empty, .qr:empty + .small { display: none }
+.plist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px }
+.plist li { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg); border-radius: 12px; font-weight: 500 }
+.plist li small { color: var(--muted); font-weight: 400 }
+
+/* เกม */
+.stage { justify-items: center; text-align: center; gap: 16px }
+.turn { font-size: 1rem; font-weight: 600; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 6px 18px; animation: drop .25s ease-out }
+.turn.mine { background: var(--accent); color: var(--surface) }
+.turn:empty { display: none }
+.trail { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 8px; min-height: 1.6em; font-family: var(--f-hand); font-size: 1.05rem; color: var(--muted) }
+.trail li { opacity: var(--o, .6) }
+.trail li + li::before { content: "→"; font-family: var(--f-body); font-size: .8rem; margin-right: 8px; opacity: .6 }
+.flash { color: var(--hot) !important; opacity: 1 !important; background: var(--hot-soft) }
+.current { display: grid; gap: 4px; justify-items: center; max-width: 100% }
+.current .lbl { font-size: .78rem; letter-spacing: .05em; color: var(--muted) }
+.big { font-family: var(--f-hand); font-size: clamp(3rem, 14vw, 5rem); line-height: 1.15; overflow-wrap: anywhere; max-width: 100% }
+.big.empty { color: var(--line) }
+.big.in { animation: rise .45s cubic-bezier(.2, .8, .2, 1.2) }
+.current .why { font-size: .92rem; color: var(--muted); min-height: 1.4em; max-width: 40ch; text-wrap: balance }
+.tag { font-size: .8rem; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 1px 12px }
+.tag:empty, .hint-letter:empty { display: none }
+.hint-letter { font-size: .82rem; color: var(--hot) }
+.timer { width: min(260px, 70%); height: 4px; border-radius: 999px; background: var(--line); overflow: hidden }
+.timer i { display: block; height: 100%; width: 100%; background: var(--accent); border-radius: inherit; transition: width .25s linear, background .3s }
+.timer.low i { background: var(--hot) }
+.timer.paused i { background: var(--muted) }
+.players { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px }
+.player { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); font-size: .86rem; color: var(--muted); transition: all .2s }
+.player b { font-family: var(--f-hand); font-weight: 400; font-size: 1.05rem; color: var(--ink); font-variant-numeric: tabular-nums }
+.player.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft) }
+.player.out { text-decoration: line-through; opacity: .45 }
+.player .lives { font-size: .6rem; letter-spacing: 1px; color: var(--hot) }
+
+.entry { width: 100%; display: grid; gap: 10px }
+.field { display: flex; align-items: center; gap: 6px; background: var(--surface); border: 1.5px solid var(--line); border-radius: 999px; padding: 5px 5px 5px 20px; transition: border-color .2s, box-shadow .2s }
+.field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft) }
+.field.bad { border-color: var(--hot); animation: shake .35s }
+.field input { flex: 1; min-width: 0; border: 0; background: transparent; font: 400 1.4rem var(--f-hand); padding: 4px 0; outline: none }
+.field input:disabled { opacity: .6 }
+.send { background: var(--accent); color: var(--surface); font-weight: 600; border-radius: 999px; padding: 9px 20px; font-size: .95rem }
+.suggest { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px }
+.suggest:empty { display: none }
+.suggest button { font: 400 1.1rem var(--f-hand); color: var(--accent); background: var(--accent-soft); border: 1px solid transparent; border-radius: 999px; padding: 1px 14px; animation: drop .15s ease-out }
+.suggest button.first { border-color: var(--accent) }
+.suggest button.used { color: var(--muted); background: transparent; border-color: var(--line); text-decoration: line-through }
+.suggest small { font: 500 .62rem var(--f-body); color: var(--muted); margin-left: 4px }
+.under { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; min-height: 32px }
+.live { font-size: .84rem; font-weight: 600; padding-left: 8px; text-align: left; flex: 1; min-width: 0 }
+.live.err { color: var(--hot) } .live.ok { color: var(--good) }
+.msg { font-size: .92rem; color: var(--muted); min-height: 1.5em; text-wrap: balance }
+.msg.err { color: var(--hot) } .msg.ok { color: var(--good) }
+
+.osk { display: grid; gap: 5px; padding: 8px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); animation: drop .2s ease-out }
+.krow { display: flex; gap: 4px; justify-content: center }
+.osk button { flex: 1 1 0; min-width: 0; max-width: 44px; height: 42px; font-size: 1.15rem; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; touch-action: manipulation }
+.osk button:active { background: var(--accent-soft) }
+.osk button.wide { max-width: 88px; flex-grow: 2; font-size: .82rem }
+.osk button.go { background: var(--accent); color: var(--surface); border-color: var(--accent) }
+.osk button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent) }
+
+.over { display: grid; gap: 12px; justify-items: center; padding: 6px 0 }
+.over .big { color: var(--accent) }
+.over p { margin: 0; color: var(--muted); max-width: 46ch; text-wrap: balance }
+
+.history { width: 100%; text-align: left; border-top: 1px solid var(--line); padding-top: 10px }
+.history summary { cursor: pointer; font-size: .85rem; color: var(--muted); list-style: none; text-align: center }
+.history summary::-webkit-details-marker { display: none }
+.history ol { list-style: none; margin: 10px 0 0; padding: 0; display: grid; max-height: 320px; overflow-y: auto }
+.history li { display: grid; grid-template-columns: 2.2em minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 6px 4px; border-bottom: 1px solid var(--line) }
+.history li .n { font-size: .75rem; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums }
+.history li .b { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; min-width: 0 }
+.history li .w { font-family: var(--f-hand); font-size: 1.2rem }
+.history li .r, .history li .p { font-size: .8rem; color: var(--muted) }
+.history li .p::before { content: "· " }
+.history li.event .r { color: var(--hot) }
+
+.sheet { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px; display: grid; gap: 10px; animation: drop .2s ease-out }
+.sheet ol { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: .9rem }
+.foot { text-align: center; font-size: .76rem; color: var(--muted); display: flex; justify-content: center; gap: 6px; align-items: center; flex-wrap: wrap }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: inline-block }
+.dot.on { background: var(--good) }
+@media (max-width: 480px) { .osk { padding: 6px 3px } .krow { gap: 3px } .osk button { height: 40px; font-size: 1.02rem } .start { width: 100% } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand">คำต้องเชื่อม</div>
+    <nav class="acts">
+      <button class="link" id="helpbtn" type="button" aria-expanded="false" aria-controls="help">วิธีเล่น</button>
+      <button class="link" id="soundbtn" type="button" aria-pressed="true">เสียง</button>
+      <button class="link danger" id="exitbtn" type="button" hidden>ออก</button>
+    </nav>
+  </header>
+
+  <section class="sheet" id="help" hidden aria-label="วิธีเล่น">
+    <ol>
+      <li>ผลัดกันตอบคำนามที่ความหมายเชื่อมกับคำก่อนหน้าโดยตรง เช่น ทะเล → ปลา → ตลาด → เงิน คนแรกตั้งคำอะไรก็ได้</li>
+      <li>ตอบได้ครั้งเดียวต่อตา ตอบผิดหรือหมดเวลาเสีย 1 ชีวิตและเสียตา ชีวิตหมดหรือยอมแพ้ = ตกรอบ</li>
+      <li>ห้ามซ้ำ ทั้งคำเดิม ส่วนของคำ (น้ำ → แม่น้ำ, ต้นไม้ → ดอกไม้) และความหมายเดิม (สี → คัลเลอร์, ตลาด → กาด)</li>
+      <li>ใช้ภาษาถิ่นและคำทับศัพท์ได้ตามกติกาที่ตั้งไว้</li>
+      <li>ตัวช่วยพิมพ์: แตะคำแนะนำเพื่อส่งทันที · <b>Tab</b> เติมคำแรก · <b>Esc</b> ล้าง · ลืมเปลี่ยนภาษาระบบแปลงให้</li>
+    </ol>
+    <p class="small" id="statsline"></p>
+  </section>
+
+  <!-- หน้าแรก -->
+  <section class="screen" id="home">
+    <div class="hero">
+      <h1>คำต้องเชื่อม</h1>
+      <p>ผลัดกันตอบคำนามที่ความหมายเชื่อมกัน ระบบเป็นกรรมการ</p>
+    </div>
+    <div class="seg wide" id="mode" role="group" aria-label="วิธีเล่น">
+      <button type="button" data-v="local">เล่นในเครื่องนี้</button>
+      <button type="button" data-v="online">ออนไลน์กับเพื่อน</button>
+    </div>
+
+    <div class="card" id="localbox">
+      <div class="opt"><span>จำนวนผู้เล่น</span>
+        <span class="stepper"><button type="button" id="minus" aria-label="ลดผู้เล่น">−</button><output id="count">2</output><button type="button" id="plus" aria-label="เพิ่มผู้เล่น">+</button></span></div>
+      <div class="names" id="names"></div>
+      <div class="opt"><span>มีบอทร่วมเล่น</span>
+        <span class="row"><span class="seg" id="diff" hidden><button type="button" data-v="easy">ง่าย</button><button type="button" data-v="normal">ปกติ</button><button type="button" data-v="hard">เก่ง</button></span>
+        <input class="switch" type="checkbox" id="bot" aria-label="มีบอทร่วมเล่น"></span></div>
+    </div>
+
+    <div class="card" id="onlinebox" hidden>
+      <div class="opt"><span>ชื่อของคุณ</span><input class="text" id="myname" maxlength="20" placeholder="ชื่อที่เพื่อนจะเห็น" style="max-width:220px"></div>
+      <div class="row"><button class="pill" type="button" id="create">สร้างห้องใหม่</button>
+        <span class="join"><input class="text" id="joincode" maxlength="4" placeholder="รหัส" aria-label="รหัสห้อง" autocomplete="off"><button class="pill ghost" type="button" id="joinbtn">เข้าห้อง</button></span></div>
+      <div class="rooms" id="roomlist"></div>
+      <p class="small" id="onlinenote"></p>
+    </div>
+
+    <details class="card rules" id="rulesbox">
+      <summary><b>กติกา</b><span id="rulesum"></span></summary>
+      <div class="opts">
+        <div class="opt"><span>ภาษาถิ่น<small id="diahelp"></small></span>
+          <span class="seg" id="dialect"><button type="button" data-v="off">ภาษากลาง</button><button type="button" data-v="mix">ผสมได้</button><button type="button" data-v="อีสาน">อีสาน</button><button type="button" data-v="เหนือ">เหนือ</button><button type="button" data-v="ใต้">ใต้</button></span></div>
+        <div class="opt"><span>คำทับศัพท์<small id="loanhelp"></small></span>
+          <span class="seg" id="loan"><button type="button" data-v="ban">ห้ามใช้</button><button type="button" data-v="allow">ใช้ได้</button></span></div>
+        <div class="opt"><span>เวลาต่อตา</span>
+          <span class="seg" id="time"><button type="button" data-v="20">20 วิ</button><button type="button" data-v="30">30 วิ</button><button type="button" data-v="45">45 วิ</button><button type="button" data-v="0">ไม่จับ</button></span></div>
+        <div class="opt"><span>ชีวิตต่อคน<small>ตอบผิดหรือหมดเวลาเสีย 1 ชีวิต</small></span>
+          <span class="seg" id="lives"><button type="button" data-v="1">1</button><button type="button" data-v="2">2</button><button type="button" data-v="3">3</button></span></div>
+        <div class="opt"><span>ต่อตัวอักษรท้ายด้วย<small>คำใหม่ต้องขึ้นต้นด้วยพยัญชนะตัวท้ายของคำก่อน</small></span><input class="switch" type="checkbox" id="letter" aria-label="ต่อตัวอักษรท้ายด้วย"></div>
+        <div class="opt"><span>เตือนก่อนส่ง (โหมดง่าย)<small>บอกระหว่างพิมพ์ว่าคำหรือความหมายซ้ำ</small></span><input class="switch" type="checkbox" id="warn" aria-label="เตือนก่อนส่ง"></div>
+        <div class="opt"><span>แก้ลืมเปลี่ยนภาษา<small>พิมพ์ด้วยแป้นอังกฤษ ระบบแปลงเป็นไทยให้ เช่น lyo → สัน</small></span><input class="switch" type="checkbox" id="autofix" aria-label="แก้ลืมเปลี่ยนภาษา"></div>
+      </div>
+    </details>
+
+    <button class="start" type="button" id="start">เริ่มเล่น</button>
+  </section>
+
+  <!-- ห้องรอ (ออนไลน์) -->
+  <section class="screen" id="roomview" hidden>
+    <div class="hero">
+      <p>รหัสห้อง</p>
+      <div class="code" id="roomcode">----</div>
+      <div class="qr" id="qr" role="img" aria-label="คิวอาร์โค้ดสำหรับเข้าห้อง"></div>
+      <p class="small">ให้เพื่อนสแกนด้วยกล้องมือถือ เข้าห้องได้ทันที หรือกรอกรหัสในหน้าแรก</p>
+      <div class="row center"><button class="link" type="button" id="copylink">คัดลอกลิงก์เข้าห้อง</button><button class="link" type="button" id="copycode">คัดลอกรหัส</button></div>
+    </div>
+    <div class="card">
+      <h3>ผู้เล่นในห้อง · <span id="roomcount">0</span> คน</h3>
+      <ul class="plist" id="roomplayers"></ul>
+      <p class="small" id="roomrules"></p>
+    </div>
+    <div class="row center"><button class="start" type="button" id="roomstart">เริ่มเกม</button></div>
+    <p class="small center" id="roomwait"></p>
+  </section>
+
+  <!-- เกม -->
+  <main class="screen stage" id="game" hidden>
+    <div class="turn" id="turn" aria-live="polite"></div>
+    <ol class="trail" id="trail" aria-label="คำก่อนหน้า"></ol>
+    <div class="current">
+      <span class="lbl" id="lbl"></span>
+      <div class="big" id="need"></div>
+      <div class="why" id="why"></div>
+      <span class="tag" id="tag"></span>
+      <span class="hint-letter" id="letterhint"></span>
+    </div>
+    <div class="timer" id="timer"><i id="bar"></i></div>
+    <div class="players" id="players"></div>
+
+    <form class="entry" id="form" autocomplete="off">
+      <div class="field" id="field">
+        <input id="word" type="text" lang="th" autocomplete="off" spellcheck="false" placeholder="พิมพ์คำนาม…" aria-label="คำนามของคุณ">
+        <button class="send" type="submit" id="send">ส่ง</button>
+      </div>
+      <div class="suggest" id="suggest" aria-label="คำแนะนำ"></div>
+      <div class="under">
+        <span class="live" id="live" aria-live="polite"></span>
+        <button class="link" type="button" id="hint">คำใบ้</button>
+        <button class="link" type="button" id="kbtoggle" aria-pressed="false">แป้นไทย</button>
+        <button class="link" type="button" id="giveup">ยอมแพ้</button>
+      </div>
+      <div class="osk" id="osk" hidden></div>
+    </form>
+    <div class="msg" id="msg" role="status"></div>
+
+    <div class="over" id="over" hidden>
+      <div class="big" id="overtitle"></div>
+      <p id="overtext"></p>
+      <div class="row center"><button class="pill" type="button" id="again">เล่นอีกรอบ</button><button class="pill ghost" type="button" id="leave">กลับหน้าแรก</button></div>
+    </div>
+
+    <details class="history" id="history">
+      <summary>ดูสายคำทั้งหมด (<span id="histcount">0</span> คำ)</summary>
+      <ol id="chain"></ol>
+    </details>
+  </main>
+
+  <footer class="foot"><span class="dot" id="judgedot"></span><span id="judgetext">กำลังเชื่อมต่อกรรมการ…</span></footer>
+</div>
+
+<script src="firebase-config.js"></script>
+<script>
+// เชื่อมเกมกับ Firebase แทนฐานข้อมูลของ Claude (ใช้เมื่อใส่ค่าใน firebase-config.js แล้ว)
+(() => {
+  const cfg = window.FIREBASE_CONFIG;
+  if (!cfg || !cfg.apiKey) { window.claude = { use: async () => null }; return }
+  const V = "10.12.2";
+  const load = src => new Promise((ok, fail) => { const el = document.createElement("script"); el.src = src; el.onload = ok; el.onerror = fail; document.head.append(el) });
+  const ready = (async () => {
+    for (const m of ["app", "auth", "firestore"]) await load(`https://www.gstatic.com/firebasejs/${V}/firebase-${m}-compat.js`);
+    firebase.initializeApp(cfg);
+    const auth = firebase.auth();
+    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    if (!auth.currentUser) await auth.signInAnonymously();
+    const fs = firebase.firestore();
+    // สิทธิ์เขียนชั่วคราวแบบเดียวกับของ Claude: ได้ถ้าไม่มีใครถืออยู่หรือหมดอายุแล้ว
+    firebase.firestore.DocumentReference.prototype.acquire = function ({ holder, ttlMs = 30000 }) {
+      const lease = fs.collection("leases").doc(this.path.replace(/\//g, "__"));
+      return fs.runTransaction(async t => {
+        const snap = await t.get(lease), now = Date.now(), l = snap.exists ? snap.data() : null;
+        if (l && l.exp > now && l.holder !== holder) return { acquired: false, expiresAt: new Date(l.exp).toISOString() };
+        t.set(lease, { holder, exp: now + Math.max(1000, Math.min(ttlMs, 600000)) });
+        return { acquired: true, holder };
+      });
+    };
+    const u = auth.currentUser;
+    const user = { id: async () => u.uid, can: async () => true, name: async () => u.displayName || "" };
+    return { db: fs, user };
+  })().catch(e => { console.error("Firebase", e); return null });
+  window.claude = { use: async n => { const r = await ready; return n === "db" ? r?.db ?? null : n === "user" ? r?.user ?? null : null } };
+})();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+"use strict";
+// ================= ข้อมูลคำ =================
+// คลังคำที่เชื่อมกัน ใช้ตัดสินเมื่อไม่มี Claude (เชื่อมทั้งสองทาง)
+const LINKS = `ทะเล: ปลา เรือ ทราย คลื่น เกาะ ปู หอย เกลือ ชายหาด ปะการัง
+ปลา: น้ำ แม่น้ำ ตลาด แมว เบ็ด เกล็ด ตู้ปลา น้ำปลา
+เรือ: ท่าเรือ ไม้พาย แม่น้ำ ชาวประมง สมอ ใบเรือ
+แม่น้ำ: สะพาน น้ำ เขื่อน ตลิ่ง
+น้ำ: แก้ว ฝน น้ำแข็ง ขวด ก๊อกน้ำ
+ฝน: เมฆ ร่ม ฟ้าร้อง รุ้ง ชาวนา
+เมฆ: ท้องฟ้า เครื่องบิน ลม
+ท้องฟ้า: ดาว ดวงอาทิตย์ ดวงจันทร์ นก เครื่องบิน ว่าว
+ดาว: กลางคืน ดวงจันทร์ อวกาศ กล้องโทรทรรศน์
+ดวงจันทร์: กลางคืน กระต่าย จรวด
+อวกาศ: จรวด นักบินอวกาศ ดาวเทียม
+จรวด: นักบินอวกาศ เชื้อเพลิง
+กลางคืน: ที่นอน หมอน ไฟฉาย นกฮูก
+ที่นอน: หมอน ผ้าห่ม ห้องนอน
+หมอน: ผ้าห่ม
+ห้องนอน: บ้าน ตู้เสื้อผ้า
+บ้าน: หลังคา ประตู หน้าต่าง ครอบครัว ห้องครัว สวน
+ประตู: กุญแจ หน้าต่าง
+กุญแจ: รถ แม่กุญแจ
+รถ: ถนน ล้อ น้ำมัน คนขับ
+ถนน: สะพาน ไฟจราจร ตำรวจ
+ตำรวจ: ปืน โจร กุญแจมือ
+ห้องครัว: กระทะ จาน เตา มีด ตู้เย็น
+กระทะ: ไข่ เตา น้ำมัน
+ไข่: ไก่ ข้าวผัด
+ไก่: เล้าไก่ ข้าวมันไก่ ขนนก
+ข้าว: ชาวนา นา จาน ช้อน หม้อหุงข้าว
+ชาวนา: ควาย นา หมวก
+ควาย: นา เขา
+จาน: ช้อน ส้อม อาหาร
+ช้อน: ส้อม ตะเกียบ
+อาหาร: ร้านอาหาร พ่อครัว
+โรงเรียน: ครู นักเรียน กระดาน ห้องเรียน หนังสือ
+ครู: นักเรียน ชอล์ก การบ้าน
+หนังสือ: ห้องสมุด ปากกา กระดาษ นิทาน แว่นตา
+ปากกา: กระดาษ หมึก สมุด
+กระดาษ: ต้นไม้ ดินสอ
+ต้นไม้: ใบไม้ ป่า ราก ผลไม้ นก
+ป่า: ช้าง เสือ ลิง
+ช้าง: งวง งา ควาญช้าง
+ลิง: กล้วย
+กล้วย: ผลไม้ ใบตอง
+ผลไม้: มะม่วง ตลาด สวน
+ตลาด: แม่ค้า เงิน ผัก กะปิ แตงโม
+เงิน: ธนาคาร กระเป๋าสตางค์ เหรียญ
+แมว: หนู นม
+หนู: กับดัก
+นม: วัว แก้ว
+วัว: คอกวัว หญ้า
+หญ้า: สนาม
+สนาม: นักกีฬา กีฬา
+ดนตรี: ระนาด กลอง เพลง นักร้อง ขลุ่ย
+เพลง: นักร้อง วิทยุ เนื้อเพลง
+โรงพยาบาล: หมอ พยาบาล ยา รถพยาบาล
+หมอ: ยา พยาบาล
+มะม่วง: ผลไม้ ตลาด สวน ข้าวเหนียว
+มะละกอ: ส้มตำ ผลไม้ สวน
+ส้มตำ: ปลาร้า กะปิ ข้าวเหนียว ครก
+มะพร้าว: กะทิ ต้นไม้ ผลไม้
+สับปะรด: ผลไม้ สวน
+ขนุน: ผลไม้ ต้นไม้
+มะขาม: ผลไม้ ต้นไม้
+มะเขือ: ผัก น้ำพริก
+ฝรั่ง: ผลไม้ สวน
+เนื้อ: วัว ควาย ตลาด มีด
+ข้าวเหนียว: ข้าว ไก่ย่าง นา
+ขนมจีน: น้ำพริก แกง ผัก
+น้ำพริก: ผัก กะปิ ปลาทู ครก ผักแกล้ม
+กะปิ: กุ้ง
+ปลาร้า: ปลา
+ร่ม: แดด
+ร้าน: ตลาด แม่ค้า
+ธง: วัด เสาธง
+เด็ก: โรงเรียน ของเล่น แม่
+โคลน: นา ควาย ฝน
+ตะกร้า: ตลาด ผัก
+แมงป่อง: หิน ป่า
+ปู่: ย่า ครอบครัว หลาน
+ย่า: ครอบครัว หลาน
+มะม่วงหิมพานต์: ผลไม้ ต้นไม้
+แตงโม: ผลไม้ สวน
+เถ้าแก่: ร้าน เงิน
+ผักแกล้ม: ผัก
+สี: ดินสอ ภาพ รุ้ง
+ฟุตบอล: สนาม นักกีฬา ประตู
+คอมพิวเตอร์: โต๊ะ ห้องเรียน
+ไอศกรีม: ขนม นม น้ำแข็ง
+ช็อกโกแลต: ขนม นม
+เค้ก: ขนม ไข่ นม
+แท็กซี่: รถ ถนน คนขับ
+กีตาร์: ดนตรี เพลง นักร้อง
+เปียโน: ดนตรี เพลง
+ไมโครโฟน: นักร้อง เพลง
+ชีส: นม หนู
+โทรทัศน์: บ้าน วิทยุ`;
+
+// คลังคำนามสำหรับคำแนะนำตอนพิมพ์ (ไม่ได้บอกว่าคำไหนเชื่อมกัน จึงไม่เฉลย)
+const EXTRA = `กา กบ กระดาษ กระต่าย กางเกง กาแฟ กุ้ง เก้าอี้ กล้อง กระเป๋า กรรไกร กวาง กะทิ กีฬา กระจก กุญแจ เกวียน ขา ข้าวเหนียว ขนม ขวด ขยะ ขนุน ขวาน ของขวัญ เข็ม ขนมปัง ขลุ่ย ขิง เขื่อน คน ครู เครื่องบิน คลอง ค้างคาว คางคก ครอบครัว คะแนน ควัน คลื่น คอ คาง โคม ครัว ฆ้อง งู งาน งา เงาะ จาน จมูก จักรยาน จิ้งจก จระเข้ จดหมาย จังหวัด จรวด จุด เจดีย์ แจกัน ฉลาม ฉิ่ง ฉาก ช้าง ชา ช้อน ชาม ชมพู่ ชาวนา ชุด ช่าง ชะนี เชือก ชิงช้า ซอง ซอย ซาลาเปา ซีอิ๊ว ญาติ ฐาน เณร ดาว ดิน ดอกไม้ เด็ก ดนตรี ดินสอ ด้าย แดด ดาบ ดอกบัว โดม ตา ต้นไม้ ตุ๊กตา ตะเกียบ เต่า ตู้เย็น ตำรวจ ตึก แตงโม โต๊ะ ตะกร้า ตั๋ว ตำนาน ถนน ถุง ถ้วย ถั่ว ถ้ำ ถาด ถุงเท้า ทะเล ทหาร ทอง ทุเรียน ทราย ทับทิม ทวีป ทูต ธง ธรรมชาติ ธนาคาร ธนู นก น้ำ นม นาฬิกา นักเรียน นิ้ว เนย น้ำแข็ง นางฟ้า นาค นาก นิทาน บ้าน บัว บันได บะหมี่ บึง ใบไม้ บริษัท บ่อ บวบ บาตร ปลา ปู ประตู ปากกา ปืน ป่า ปีก เป็ด แป้ง ประเทศ ปลาทู ปาก ปิ่นโต ปลาวาฬ ผม ผัก ผีเสื้อ ผ้า ผลไม้ ผึ้ง ผิว ผักบุ้ง ฝน ฝรั่ง ฝุ่น ฝา ฝ้าย พ่อ พระ พริก พัดลม เพลง เพื่อน แพะ พลอย พายุ พจนานุกรม พรม ฟัน ฟ้า ไฟ ไฟฉาย ฟาง ฟักทอง ฟอง ภูเขา ภาษา ภาพ ภาชนะ แม่ แมว มะม่วง มด มือ ม้า มะพร้าว เมฆ เมือง มีด มะนาว ไม้ มังคุด มะละกอ ยาย ยา ยักษ์ ยีราฟ ยุง ยาง ยานอวกาศ รถ ร่ม เรือ รองเท้า โรงเรียน รุ้ง ราชินี ราง ร้าน ไร่ ระฆัง รูป รั้ว ลิง ลม ลูก ลำไย ล้อ โลก ลาบ ลิ้นจี่ ลำธาร ลูกโป่ง เลื่อย วัว วัด ว่าว แว่นตา วิทยุ วาฬ วุ้นเส้น วิชา ศาลา ศิลปะ ศีรษะ ศาสนา สุนัข เสือ สิงโต สวน สะพาน สมุด เสื้อ สับปะรด ส้ม แสง สบู่ สมอง สนาม หมา หมู หมี หนังสือ หัวใจ หิมะ เห็ด หญ้า หลังคา หน้าต่าง หอย หนู หมวก หม้อ หมึก หาด หิน หนอน อาหาร อากาศ อูฐ อ้อย อินทรี องุ่น อวกาศ อิฐ อาจารย์ อีกา อ่าง`;
+
+// ภาษาถิ่น: คำ=ความหมายภาษากลาง (คำเดียวอยู่ได้หลายภาค)
+const DIALECT_SRC = `อีสาน: หมากม่วง=มะม่วง หมากหุ่ง=มะละกอ หมากพร้าว=มะพร้าว หมากนัด=สับปะรด หมากมี่=ขนุน หมากขาม=มะขาม หมากเขือ=มะเขือ หมากสีดา=ฝรั่ง ซิ้น=เนื้อ ข้าวปุ้น=ขนมจีน ปลาแดก=ปลาร้า พ่อใหญ่=ปู่ แม่ใหญ่=ย่า ฮ่ม=ร่ม เฮือน=บ้าน เฮือ=เรือ ฮ้าน=ร้าน กะต่า=ตะกร้า แมงงอด=แมงป่อง ขี้ตม=โคลน
+เหนือ: บะม่วง=มะม่วง บะพร้าว=มะพร้าว บะหนุน=ขนุน บะก้วยเต๊ด=มะละกอ บะขาม=มะขาม บะนัด=สับปะรด บะเขือ=มะเขือ จิ๊น=เนื้อ ข้าวนึ่ง=ข้าวเหนียว กาด=ตลาด ป๋า=ปลา ตุง=ธง หละอ่อน=เด็ก จ้อง=ร่ม อุ๊ย=ปู่ เฮือน=บ้าน ขี้ตม=โคลน
+ใต้: หลาด=ตลาด เคย=กะปิ ลอกอ=มะละกอ ย่านัด=สับปะรด หัวครก=มะม่วงหิมพานต์ นายหัว=เถ้าแก่ แตงจีน=แตงโม น้ำชุบ=น้ำพริก ผักเหนาะ=ผักแกล้ม`;
+
+// คำทับศัพท์ (ใช้ตรวจเมื่อตั้งกติกาห้ามใช้)
+const LOAN = `คอมพิวเตอร์ คอม พิซซ่า บอล ฟุตบอล บาสเกตบอล วอลเลย์บอล ฮิปโปโปเตมัส เฮลิคอปเตอร์ โน้ต เกม ชีส ซุป กีตาร์ เปียโน ไมโครโฟน ไมค์ ฟาร์ม กัปตัน แท็กซี่ เค้ก ช็อกโกแลต ไอศกรีม ไอติม แฮมเบอร์เกอร์ เบอร์เกอร์ แซนด์วิช สปาเกตตี เบียร์ ไวน์ โซดา ทีวี วิดีโอ อินเทอร์เน็ต เว็บไซต์ แอป ไวไฟ ออนไลน์ โปสเตอร์ แสตมป์ ลิฟต์ แฟชั่น ซูเปอร์มาร์เก็ต มาร์เก็ต รถบัส บัส ไฟแช็ก แบตเตอรี่ ปลั๊ก สวิตช์ คลินิก วัคซีน ไวรัส แบคทีเรีย ดอลลาร์ ยีนส์ เสื้อเชิ้ต เชิ้ต สเวตเตอร์ ซอส กราฟ โฟม พลาสติก เทป ฟิล์ม ฮอตดอก คุกกี้ โดนัท ป๊อปคอร์น โรบอต แท็บเล็ต สมาร์ตโฟน`.split(/\s+/);
+// คำทับศัพท์ที่มีคำไทยความหมายเดียวกัน (สี → คัลเลอร์ ถือว่าซ้ำ)
+const LOANMEAN = Object.fromEntries(`คัลเลอร์=สี เฮาส์=บ้าน แคต=แมว ด็อก=หมา ฟิช=ปลา วอเตอร์=น้ำ ไรซ์=ข้าว ทรี=ต้นไม้ ฟลาวเวอร์=ดอกไม้ ซี=ทะเล มาร์เก็ต=ตลาด มันนี่=เงิน บุ๊ก=หนังสือ สกูล=โรงเรียน ทีชเชอร์=ครู คาร์=รถ ริเวอร์=แม่น้ำ สกาย=ท้องฟ้า สตาร์=ดาว มูน=ดวงจันทร์ เรน=ฝน คลาวด์=เมฆ แบงก์=ธนาคาร ด็อกเตอร์=หมอ มิลค์=นม ช็อป=ร้าน เบิร์ด=นก ชิกเก้น=ไก่ ฟรุต=ผลไม้ ดอร์=ประตู วินโดว์=หน้าต่าง โบ๊ท=เรือ ทีวี=โทรทัศน์`.split(/\s+/).map(x => x.split("=")));
+// คำไทยที่ความหมายเดียวกัน (หมา → สุนัข ถือว่าซ้ำ)
+const SYN = Object.fromEntries(`สุนัข=หมา ตะวัน=ดวงอาทิตย์ พระอาทิตย์=ดวงอาทิตย์ พระจันทร์=ดวงจันทร์ เรือน=บ้าน รถยนต์=รถ วารี=น้ำ นภา=ท้องฟ้า มัจฉา=ปลา บุปผา=ดอกไม้ ปักษา=นก`.split(/\s+/).map(x => x.split("=")));
+// ส่วนของคำที่ใช้ตรวจคำประสมซ้ำ (ต้นไม้ → ดอกไม้)
+const PARTS = `ต้น ดอก ผล ใบ ราก กิ่ง หัว ตา หู มือ เท้า ขา ปาก แม่ พ่อ น้ำ ไม้ ไฟ ฟ้า ดิน หิน ลม ฝน ข้าว ผ้า รถ เรือ บ้าน ห้อง ร้าน โรง นก ปลา ไก่ หมู วัว ผัก ขนม เสื้อ ถุง ขวด จาน หม้อ แก้ว ทาง ประตู สวน นา ป่า เขา ทะเล ตู้ โต๊ะ เตียง กล้อง ไข่ เนื้อ นม ทอง เงิน เหล็ก แสง เสียง`.split(/\s+/);
+const STOP = new Set("นัก การ ความ ผู้ ที่ เครื่อง ลูก ตัว ชาว ของ หมาก บะ".split(" ")); // คำนำหน้าที่ใช้ร่วมกันได้
+const NOSPLIT = new Set("ตาราง ปากกา กาแฟ นาฬิกา ตาล".split(" ")); // ดูเหมือนคำประสมแต่เป็นคำเดียว
+
+// ================= อักษรไทย =================
+const LEAD = "เแโใไ";
+const THAI = /^[฀-๿]+$/;
+const isCons = c => c >= "ก" && c <= "ฮ";
+const isMark = c => c === "ั" || (c >= "ิ" && c <= "ฺ") || (c >= "็" && c <= "๎");
+function firstIdx(w) { for (let i = 0; i < w.length; i++) { if (LEAD.includes(w[i])) continue; return isCons(w[i]) ? i : -1 } return -1 }
+function lastIdx(w) {
+  let i = w.length - 1;
+  while (i >= 0) {
+    const c = w[i];
+    if (c === "์") { // การันต์: ข้ามพยัญชนะที่ไม่ออกเสียง
+      i--; while (i >= 0 && isMark(w[i])) i--;
+      if (i >= 0 && isCons(w[i])) { const silent = w[i]; i--; if (silent === "ร" && i >= 0 && "ทตดก".includes(w[i])) i-- }
+      continue;
+    }
+    if (isCons(c)) return i;
+    i--;
+  }
+  return -1;
+}
+const firstOf = w => w[firstIdx(w)];
+const lastOf = w => w[lastIdx(w)];
+// ทำให้คำที่พิมพ์ต่างกันแต่เป็นคำเดียวกันเทียบกันได้ เช่น ช่องว่าง ตัวอักษรล่องหน สระอำที่พิมพ์แยก
+const norm = raw => String(raw).normalize("NFC").replace(/[\s​-‍﻿]+/g, "").replace(/ํา/g, "ำ").replace(/ำ([่-๋])/g, "$1ำ");
+// แป้นเกษมณี: แปลงตัวอักษรที่พิมพ์ด้วยแป้นอังกฤษเป็นไทย
+const KMAP = {};
+[["`1234567890-=qwertyuiop[]\\asdfghjkl;'zxcvbnm,./", "_ๅ/-ภถุึคตจขชๆไำพะัีรนยบลฃฟหกดเ้่าสวงผปแอิืทมใฝ"],
+ ["~!@#$%^&*()_+QWERTYUIOP{}|ASDFGHJKL:\"ZXCVBNM<>?", "%+๑๒๓๔ู฿๕๖๗๘๙๐\"ฎฑธํ๊ณฯญฐ,ฅฤฆฏโฌ็๋ษศซ.()ฉฮฺ์?ฒฬฦ"]]
+  .forEach(([en, th]) => { const t = [...th]; [...en].forEach((c, i) => KMAP[c] = t[i]) });
+const toThai = str => /[A-Za-z]/.test(str) ? [...str].map(c => KMAP[c] ?? c).join("") : str;
+
+// ================= ที่เก็บในเครื่อง =================
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v) } catch { return d } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} }
+};
+const stats = store.get("ktc-stats3", { best: 0, games: 0 });
+const savedNames = store.get("ktc-names", []);
+const learned = store.get("ktc-bank", []);
+const cfg = Object.assign({ count: 2, bot: false, diff: "normal", time: 30, lives: 1, letter: false, dialect: "mix", loan: "allow", warn: false, autofix: true },
+  store.get("ktc-cfg", {}));
+const saveCfg = () => store.set("ktc-cfg", cfg);
+
+// ================= คลังคำ =================
+const graph = {};
+function link(a, b) { if (a === b) return; (graph[a] ||= new Set()).add(b); (graph[b] ||= new Set()).add(a) }
+for (const line of LINKS.split("\n")) { const [a, rest] = line.split(":"); for (const b of rest.trim().split(/\s+/)) link(a.trim(), b) }
+const linked = (a, b) => !!graph[a]?.has(b);
+
+const REGIONS = ["อีสาน", "เหนือ", "ใต้"];
+const DIA = {}, DIA_OF = {};
+for (const line of DIALECT_SRC.split("\n")) {
+  const [r, rest] = line.split(":");
+  for (const pair of rest.trim().split(/\s+/)) {
+    const [w, m] = pair.split("=");
+    (DIA[w] ||= { rs: new Set(), m }).rs.add(r.trim());
+    (DIA_OF[m] ||= new Set()).add(w);
+  }
+}
+const diaLabel = w => DIA[w] ? [...DIA[w].rs].join("/") : "";
+const LOAN_OF = {};
+for (const [w, m] of Object.entries(LOANMEAN)) (LOAN_OF[m] ||= []).push(w);
+const LOAN_ALL = [...new Set([...LOAN, ...Object.keys(LOANMEAN)])];
+const isLoan = w => LOAN_ALL.some(l => w === l || (l.length >= 3 && w.includes(l)));
+const canon = w => DIA[w]?.m ?? LOANMEAN[w] ?? SYN[w] ?? w;
+
+const BANK = [...new Set([...Object.keys(graph), ...EXTRA.split(/\s+/), ...learned])];
+let KNOWN = null;
+function learn(w) { if (BANK.includes(w)) return; BANK.push(w); learned.push(w); store.set("ktc-bank", learned); KNOWN = null }
+const known = () => KNOWN ||= new Set([...BANK, ...Object.keys(DIA), ...PARTS].filter(w => w.length >= 2));
+// แยกคำประสมเป็นคำย่อยที่รู้จัก ให้ได้น้อยชิ้นที่สุด (ต้นไม้ → ต้น + ไม้)
+function partsOf(w) {
+  if (NOSPLIT.has(w)) return [];
+  const K = known(), n = w.length, best = Array(n + 1).fill(null); best[0] = [];
+  for (let i = 1; i <= n; i++) for (let j = 0; j < i; j++) {
+    const piece = w.slice(j, i);
+    if (best[j] && piece !== w && (K.has(piece) || STOP.has(piece)) && (!best[i] || best[j].length + 1 < best[i].length)) best[i] = [...best[j], piece];
+  }
+  return (best[n] || []).filter(x => !STOP.has(x));
+}
+// คำ a ขึ้นต้นหรือลงท้ายด้วยคำ b โดยส่วนที่เหลือยาวพอเป็นอีกพยางค์ (น้ำ → น้ำตก)
+function affix(a, b) {
+  if (b.length < 3 || a === b || NOSPLIT.has(a) || a.length - b.length < 2 || STOP.has(b)) return false;
+  if (a.startsWith(b)) { const r = a[b.length]; return isCons(r) || LEAD.includes(r) }
+  return a.endsWith(b);
+}
+
+// ================= สถานะ =================
+let G = null;            // สถานะเกมที่แชร์กัน (ในเครื่อง หรือ ซิงก์ออนไลน์)
+let mode = "local";      // local | online
+let busy = false;        // กำลังรอกรรมการ
+let token = 0;           // เปลี่ยนทุกครั้งที่สถานะเกมเปลี่ยน ใช้ทิ้งผลตัดสินที่มาช้า
+let note = null;         // ข้อความเฉพาะเครื่องนี้ (ทับข้อความของเกมชั่วคราว)
+let pausedLeft = null;   // เวลาที่เหลือตอนหยุดรอกรรมการ (เล่นในเครื่อง)
+let botReply = null;     // คำตอบบอทที่ได้มาพร้อมผลตัดสิน
+let botTimer = null;
+const me = { id: null, name: store.get("ktc-myname", "") };
+let sample = null, judge = "connecting"; // claude | offline
+
+const rules = () => G?.cfg ?? cfg;
+const words = () => G ? G.chain.filter(c => c.w) : [];
+const prev = () => words().at(-1)?.w ?? null;
+const usedSet = () => new Set(words().map(c => c.w));
+const usedMeaning = () => new Set(words().map(c => c.mean || c.w));
+const cur = () => G?.players[G.turn];
+const isMine = () => !!G && !!cur() && (mode === "local" ? !cur().bot : cur().id === me.id);
+const canType = () => !!G && !G.over && !busy && isMine();
+const isRegion = () => REGIONS.includes(rules().dialect);
+const alive = () => G.players.filter(p => !p.out);
+function nextIdx(from) { const n = G.players.length; for (let k = 1; k <= n; k++) { const i = (from + k) % n; if (!G.players[i].out) return i } return from }
+
+// ================= กติกา =================
+function formsOf(central) {
+  const r = rules(), d = [...(DIA_OF[central] || [])], l = r.loan === "ban" ? [] : LOAN_OF[central] || [];
+  if (r.dialect === "off") return [central, ...l];
+  if (isRegion()) return d.filter(w => DIA[w].rs.has(r.dialect));
+  return [central, ...d, ...l];
+}
+const takenMeaning = w => usedMeaning().has(canon(w));
+function sharedPart(w) {
+  const mine = new Set([w, ...partsOf(w)]);
+  for (const c of words()) {
+    if (c.w === w) continue;
+    for (const t of [c.w, ...partsOf(c.w)]) if (mine.has(t) || affix(w, t)) return { part: t, with: c.w };
+    if (affix(c.w, w)) return { part: w, with: c.w };
+    for (const m of mine) if (m !== w && affix(c.w, m)) return { part: m, with: c.w };
+  }
+  return null;
+}
+// คำที่ต่อได้จากคลังคำในเครื่อง ตามกติกาที่ตั้งไว้
+function options(from) {
+  const r = rules(), used = usedSet();
+  const list = !from ? Object.keys(graph).filter(w => graph[w].size >= (isRegion() ? 1 : 4)).flatMap(formsOf)
+    : [...(graph[canon(from)] || [])].flatMap(formsOf)
+      .filter(w => !used.has(w) && !takenMeaning(w) && !sharedPart(w) && (!r.letter || firstOf(w) === lastOf(from)));
+  return [...new Set(r.loan === "ban" ? list.filter(w => !isLoan(w)) : list)];
+}
+function metaFrom(w, d, m) {
+  if (DIA[w]) return { dia: diaLabel(w), mean: DIA[w].m };
+  if (LOANMEAN[w]) return { dia: "ทับศัพท์", mean: LOANMEAN[w] };
+  if (SYN[w]) return { dia: null, mean: SYN[w] };
+  const dia = REGIONS.includes(d) || d === "ทับศัพท์" ? d : null;
+  const mean = typeof m === "string" && m.trim() && m !== "null" ? norm(m) : null;
+  return mean && mean !== w ? { dia, mean } : { dia: null, mean: null };
+}
+// ตรวจก่อนส่ง: err = พิมพ์ไม่ครบ (ไม่เสียตา), foul = ผิดกติกา (โดนปรับ)
+function check(raw) {
+  const r = rules(), w = norm(raw), from = prev();
+  if (!w) return { err: "พิมพ์คำก่อนนะ" };
+  if (!THAI.test(w)) return { err: "ใช้ได้เฉพาะตัวอักษรไทย" };
+  const list = words(), dupAt = list.findIndex(c => c.w === w);
+  if (dupAt >= 0) { flash(w); return { w, foul: `คำซ้ำ “${w}” ใช้ไปแล้วในคำที่ ${dupAt + 1} โดย ${G.players[list[dupAt].by].name}` } }
+  const sp = sharedPart(w);
+  if (sp) { flash(sp.with); return { w, foul: `“${w}” มี “${sp.part}” ซ้ำกับ “${sp.with}” ที่ใช้แล้ว` } }
+  if (takenMeaning(w)) {
+    const tw = list.find(c => (c.mean || c.w) === canon(w)); if (tw) flash(tw.w);
+    return { w, foul: `“${w}” ความหมายซ้ำกับ “${tw?.w ?? canon(w)}” ที่ใช้แล้ว${canon(w) !== w ? ` (แปลว่า ${canon(w)})` : ""}` };
+  }
+  if (r.loan === "ban" && isLoan(w)) return { w, foul: `“${w}” เป็นคำทับศัพท์` };
+  if (r.dialect === "off" && DIA[w] && !BANK.includes(w)) return { w, foul: `“${w}” เป็นภาษาถิ่น${diaLabel(w)} เกมนี้ใช้ภาษากลาง` };
+  if (isRegion()) {
+    if (DIA[w] && !DIA[w].rs.has(r.dialect)) return { w, foul: `“${w}” เป็นภาษา${diaLabel(w)} ไม่ใช่ภาษา${r.dialect}` };
+    if (!DIA[w] && BANK.includes(w)) return { w, foul: `“${w}” เป็นภาษากลาง ต้องตอบเป็นภาษา${r.dialect}` };
+    if (!DIA[w] && judge !== "claude") return { err: `คลังคำในเครื่องยังไม่รู้จัก “${w}” ในภาษา${r.dialect} ลองคำอื่น (ไม่เสียตา)` };
+  }
+  if (r.letter && from && firstOf(w) !== lastOf(from)) return { w, foul: `“${w}” ไม่ได้ขึ้นต้นด้วย ${lastOf(from)}` };
+  return { w };
+}
+
+// ================= เปลี่ยนสถานะเกม (ใช้ร่วมกันทั้งในเครื่องและออนไลน์) =================
+function newGameState(players, r) {
+  return {
+    id: Math.random().toString(36).slice(2, 10), rev: 0,
+    cfg: { time: r.time, lives: r.lives, letter: r.letter, dialect: r.dialect, loan: r.loan, diff: r.diff },
+    players: players.map(p => ({ id: p.id, name: p.name, bot: !!p.bot, score: 0, lives: r.lives, out: false })),
+    chain: [], turn: 0, started: false, over: false, turnEndsAt: null, result: null, msg: null
+  };
+}
+// เล่นในเครื่องเริ่มจับเวลาหลังคำแรก ออนไลน์จับตั้งแต่เริ่ม (คำแรกได้เวลา 2 เท่า)
+function resetDeadline() {
+  const t = G.cfg.time;
+  G.turnEndsAt = t && (G.started || mode === "online") ? Date.now() + t * 1000 * (G.started ? 1 : 2) : null;
+}
+function doAccept(w, why, meta) {
+  const p = cur();
+  G.chain.push({ w, by: G.turn, why: why || "", dia: meta.dia || null, mean: meta.mean || null });
+  p.score++; G.started = true; G.msg = null;
+  if (G.players.length > 1) G.turn = nextIdx(G.turn);
+  resetDeadline();
+  return p.bot ? "bot" : "ok";
+}
+function doPenalty(i, reason) {
+  const p = G.players[i];
+  p.lives--;
+  if (p.lives <= 0) return doEliminate(i, reason);
+  G.chain.push({ w: null, by: i, why: `${p.name} ตอบผิด · ${reason} · เหลือ ${p.lives} ชีวิต` });
+  G.msg = { text: `✗ ${reason} · ${p.name} เหลือ ${p.lives} ชีวิต`, kind: "err" };
+  if (G.players.length > 1) G.turn = nextIdx(i);
+  resetDeadline();
+  return "bad";
+}
+function doEliminate(i, reason) {
+  const p = G.players[i];
+  p.out = true; p.lives = 0;
+  G.chain.push({ w: null, by: i, why: `${p.name} ตกรอบ · ${reason}` });
+  const left = alive();
+  if (G.players.length === 1 || left.length <= 1) { finish(left[0] ?? null, reason); return "end" }
+  G.turn = nextIdx(i); resetDeadline();
+  G.msg = { text: `✗ ${p.name} ตกรอบ · ${reason}`, kind: "err" };
+  return "out";
+}
+function finish(winner, reason) {
+  G.over = true; G.turnEndsAt = null; G.msg = null;
+  const len = words().length, solo = G.players.length === 1, from = prev();
+  const ex = from ? options(from).slice(0, 3) : [];
+  const ranking = [...G.players].sort((a, b) => b.score - a.score).map(p => `${p.name} ${p.score}`).join(" · ");
+  G.result = {
+    winner: winner ? winner.id : null,
+    title: solo ? `${len} คำ` : winner ? `${winner.name} ชนะ` : "จบเกม",
+    text: (solo ? `${reason} · ` : `${ranking} · `) + `สายคำยาว ${len} คำ` + (ex.length ? ` · ต่อจาก “${from}” ได้ เช่น ${ex.join(", ")}` : "")
+  };
+}
+function endSound() {
+  const w = G.result?.winner;
+  if (!w) return "out";
+  if (mode === "online") return w === me.id ? "win" : "out";
+  return G.players.find(p => p.id === w)?.bot ? "out" : "win";
+}
+
+// ทุกการเปลี่ยนสถานะผ่านตรงนี้: แสดงผลทันที และถ้าออนไลน์ส่งขึ้นห้องด้วย
+function act(mutate) {
+  if (!G || G.over) return;
+  const base = G.rev;
+  const sound = mutate();
+  G.rev = base + 1; token++; note = null; busy = false; pausedLeft = null; lastTick = null;
+  if (sound) sfx(sound === "end" ? endSound() : sound);
+  afterChange();
+  if (mode === "online") pushGame(JSON.parse(JSON.stringify(G)), base);
+}
+function afterChange() {
+  if (G.over) recordStats();
+  render();
+  clearTimeout(botTimer);
+  if (mode === "local" && !G.over && cur().bot) scheduleBot();
+  if (!G.over && isMine()) focusWord();
+}
+let statsFor = null;
+function recordStats() {
+  if (statsFor === G.id) return;
+  statsFor = G.id;
+  stats.games++; stats.best = Math.max(stats.best, words().length);
+  store.set("ktc-stats3", stats);
+}
+
+// ================= กรรมการ =================
+const RULES = `เกม "คำต้องเชื่อม" ภาษาไทย: ผู้เล่นผลัดกันตอบคำนามทีละ 1 คำ คำใหม่ต้องมีความหมายเชื่อมโยงกับคำก่อนหน้าโดยตรง เช่น เป็นส่วนประกอบ อยู่ที่เดียวกัน ใช้คู่กัน ทำจาก เป็นชนิดของ หรือคนทั่วไปนึกถึงทันที (ทะเล→ปลา, ปลา→ตลาด, ตลาด→เงิน) ความเชื่อมโยงที่ต้องอธิบายอ้อมหลายทอดไม่นับ คำกริยา คำคุณศัพท์ และชื่อเฉพาะไม่นับ`;
+function extraRules() {
+  const r = rules();
+  const same = "คำที่ความหมายเดียวกับคำที่ใช้ไปแล้ว (คำแปล คำพ้องความหมาย ภาษาถิ่น คำทับศัพท์ เช่น สี→คัลเลอร์ หมา→สุนัข ตลาด→กาด) และคำที่มีส่วนของคำซ้ำกับคำที่ใช้แล้ว (น้ำ→แม่น้ำ ต้นไม้→ดอกไม้) ถือว่าซ้ำ ไม่ผ่าน";
+  const loan = r.loan === "ban"
+    ? "ห้ามคำทับศัพท์ภาษาต่างประเทศ เช่น คอมพิวเตอร์ ฟุตบอล รวมถึงคำประสมที่มีคำทับศัพท์ แต่คำยืมบาลี สันสกฤต เขมร จีนที่ใช้เป็นคำไทยทั่วไปมานานแล้วใช้ได้"
+    : "ใช้คำทับศัพท์ที่เขียนด้วยอักษรไทยได้ เช่น คอมพิวเตอร์ ฟุตบอล";
+  const dia = r.dialect === "off" ? "ใช้ได้เฉพาะคำภาษาไทยกลาง คำภาษาถิ่นที่ภาษากลางไม่ใช้ไม่ผ่าน"
+    : isRegion() ? `ต้องตอบเป็นคำนามภาษาถิ่น${r.dialect}ที่ต่างจากภาษากลางเท่านั้น เช่น ${Object.keys(DIA).filter(w => DIA[w].rs.has(r.dialect)).slice(0, 4).join(" ")} คำภาษากลางไม่ผ่าน`
+    : "ใช้คำภาษาถิ่นอีสาน เหนือ ใต้ ได้ ถ้าเป็นคำนามที่คนในภาคนั้นใช้จริง";
+  return `${dia} ${loan} ตัดสินความเชื่อมโยงจากความหมาย ${same}`;
+}
+const usedList = () => words().map(c => c.mean ? `${c.w}(=${c.mean})` : c.w).join(", ") || "-";
+const DIFF_TEXT = { easy: "เลือกคำง่ายๆ ที่เห็นความเชื่อมโยงชัด", normal: "เลือกคำทั่วไปที่คนรู้จัก", hard: "เลือกคำที่เชื่อมโยงชัดเจน แต่ทำให้คนต่อไปต่อได้ยาก" };
+const replyRule = from => `ตอบคำนาม 1 คำที่เชื่อมกับ "${from}" และไม่ซ้ำ${rules().letter ? ` โดยต้องขึ้นต้นด้วยพยัญชนะ "${lastOf(from)}" (ไม่นับสระนำ เ แ โ ใ ไ)` : ""} ${DIFF_TEXT[rules().diff] || DIFF_TEXT.normal}`;
+const META_FIELDS = (w, prefix = "") => `"${prefix}dialect": "อีสาน หรือ เหนือ หรือ ใต้ ถ้า ${w} เป็นภาษาถิ่น, ทับศัพท์ ถ้าเป็นคำทับศัพท์, ไม่งั้น null", "${prefix}meaning": "คำไทยที่ใช้บ่อย 1 คำที่ความหมายเดียวกัน ถ้าเป็นภาษาถิ่น คำทับศัพท์ หรือคำพ้องความหมาย ไม่งั้น null"`;
+function judgePrompt(from, w, withReply) {
+  let p = `คุณเป็นกรรมการ${RULES} ${extraRules()}\nคำที่ใช้ไปแล้ว: ${usedList()}\n`;
+  p += from ? `คำก่อนหน้า: "${from}"\nคำที่ผู้เล่นตอบ: "${w}"\nตรวจว่า "${w}" เป็นคำนามที่มีอยู่จริง ผ่านกติกาข้างต้น และเชื่อมโยงกับ "${from}" หรือไม่`
+    : `นี่คือคำแรกของเกม ผู้เล่นตั้งคำว่า "${w}" ตรวจเพียงว่าเป็นคำนามที่มีอยู่จริงและผ่านกติกาข้างต้นหรือไม่ (ไม่ต้องเชื่อมกับอะไร)`;
+  if (withReply) p += `\nถ้าผ่าน ให้คุณเล่นต่อในฐานะบอท: ${replyRule(w)} และห้ามเป็น "${w}"`;
+  p += `\nตอบเป็น JSON อย่างเดียว: {"valid": true หรือ false, "reason": "${from ? "อธิบายความเชื่อมโยงหรือเหตุที่ไม่ผ่าน" : "เหตุผล"} สั้นๆ ไม่เกิน 12 คำ", ${META_FIELDS(w)}${withReply ? `, "reply": "คำของบอท หรือ null ถ้าคิดไม่ออก", "replyReason": "ความเชื่อมโยงกับ ${w} สั้นๆ", ${META_FIELDS("คำบอท", "reply")}` : ""}}`;
+  return p;
+}
+const PERMANENT = ["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"];
+function dropClaude(e) { if (PERMANENT.includes(e?.code)) { judge = "offline"; renderJudge(); return true } return false }
+
+// ผลตัดสิน: {valid, reason, meta, reply?} | {retry} | {err}
+async function judgeWord(from, w, withReply) {
+  if (judge === "claude") {
+    try {
+      const res = await sample.json(judgePrompt(from, w, withReply), { modelTier: "quick" });
+      if (!res || typeof res.valid !== "boolean") return { retry: "กรรมการตอบไม่ชัด กดส่งอีกครั้งได้ ไม่เสียตา" };
+      const out = { valid: res.valid, reason: res.reason || (from ? "ไม่เชื่อมกัน" : "ไม่ใช่คำนาม"), meta: metaFrom(w, res.dialect, res.meaning) };
+      if (withReply && typeof res.reply === "string" && res.reply.trim() && res.reply !== "null") {
+        const rw = norm(res.reply); out.reply = { w: rw, why: res.replyReason || "", meta: metaFrom(rw, res.replyDialect, res.replyMeaning) };
+      }
+      return out;
+    } catch (e) {
+      if (!dropClaude(e)) return { retry: e?.code === "rate_limited" ? "ใช้ Claude ถี่เกินไป รอสักครู่แล้วส่งอีกครั้ง (ไม่เสียตา)" : "ตรวจคำไม่สำเร็จ กดส่งอีกครั้งได้ ไม่เสียตา" };
+    }
+  }
+  // กรรมการในเครื่อง
+  if (!from) {
+    if (!graph[canon(w)]) return { err: `คลังคำในเครื่องยังไม่รู้จัก “${w}” ลองคำอื่น เช่น ${options(null).slice(0, 4).join(" ")}` };
+    return { valid: true, reason: "คำแรก", meta: metaFrom(w) };
+  }
+  if (!linked(canon(from), canon(w))) return { valid: false, reason: `คลังคำไม่มีความเชื่อมโยงระหว่าง “${from}” กับ “${w}”`, meta: metaFrom(w) };
+  return { valid: true, reason: "อยู่ในคลังคำ", meta: metaFrom(w) };
+}
+
+async function submit() {
+  if (!canType()) return;
+  const r = check($("word").value);
+  if (r.err) { bad(r.err); return }
+  if (r.foul) { $("word").value = ""; act(() => doPenalty(G.turn, r.foul)); return }
+  const w = r.w, from = prev(), myTok = token;
+  const withReply = mode === "local" && G.players.length > 1 && G.players[nextIdx(G.turn)].bot;
+  busy = true;
+  if (mode === "local" && G.turnEndsAt) pausedLeft = G.turnEndsAt - Date.now();
+  setNote(`กำลังตัดสิน “${w}”…`); render();
+  const v = await judgeWord(from, w, withReply);
+  if (myTok !== token || !G) return; // สถานะเกมเปลี่ยนไปแล้ว (เช่น หมดเวลาจากอีกเครื่อง)
+  busy = false;
+  if (pausedLeft != null) { G.turnEndsAt = Date.now() + pausedLeft; pausedLeft = null }
+  if (v.retry || v.err) { if (v.err) bad(v.err); else setNote(v.retry, "err"); render(); return }
+  $("word").value = "";
+  if (!v.valid) { act(() => doPenalty(G.turn, `“${w}” ไม่ผ่าน: ${v.reason}`)); return }
+  if (!v.meta.dia) learn(w);
+  botReply = v.reply || null;
+  act(() => doAccept(w, from ? v.reason : "คำแรก", v.meta));
+}
+
+// ================= บอท (เล่นในเครื่องเท่านั้น) =================
+function scheduleBot() {
+  const myTok = token, reply = botReply, from = prev(), r = rules();
+  botReply = null;
+  const ok = x => x && THAI.test(x) && !usedSet().has(x) && !takenMeaning(x) && !sharedPart(x)
+    && (r.loan !== "ban" || !isLoan(x)) && (!isRegion() || !DIA[x] || DIA[x].rs.has(r.dialect))
+    && (r.dialect !== "off" || !DIA[x]) && (!r.letter || !from || firstOf(x) === lastOf(from));
+  (async () => {
+    let pick = reply && ok(reply.w) ? reply : null;
+    if (!pick && judge === "claude" && from) {
+      try {
+        const res = await sample.json(`คุณเป็นบอทใน${RULES} ${extraRules()}\nคำก่อนหน้า: "${from}"\nคำที่ใช้ไปแล้ว: ${usedList()}\n${replyRule(from)}\nตอบเป็น JSON อย่างเดียว: {"reply": "คำ หรือ null ถ้าคิดไม่ออก", "replyReason": "ความเชื่อมโยงกับ ${from} สั้นๆ", ${META_FIELDS("คำ", "reply")}}`, { modelTier: "quick", cache: false });
+        const rw = typeof res?.reply === "string" ? norm(res.reply) : "";
+        if (ok(rw)) pick = { w: rw, why: res.replyReason || "", meta: metaFrom(rw, res.replyDialect, res.replyMeaning) };
+      } catch (e) { dropClaude(e) }
+    }
+    if (myTok !== token || !G) return;
+    if (!pick) {
+      let pool = options(from);
+      const plain = pool.filter(w => !LOAN_ALL.includes(w) && !DIA[w]); // บอทใช้คำภาษากลางก่อน
+      if (!isRegion() && plain.length) pool = plain;
+      if (r.diff === "hard" && from) pool.sort((a, b) => options(a).length - options(b).length);
+      const w = r.diff === "hard" && from ? pool[0] : pool[Math.floor(Math.random() * pool.length)];
+      if (w) pick = { w, why: from ? "อยู่ในคลังคำ" : "คำแรก", meta: metaFrom(w) };
+    }
+    const len = words().length; // บอทเริ่มมีโอกาสคิดไม่ออกเมื่อสายคำยาวขึ้น
+    const giveUp = r.diff === "easy" ? Math.min(.4, Math.max(0, len - 4) * .04) : r.diff === "normal" ? Math.min(.2, Math.max(0, len - 12) * .01) : 0;
+    botTimer = setTimeout(() => {
+      if (myTok !== token || !G || G.over || !cur()?.bot) return;
+      if (!pick || Math.random() < giveUp) act(() => doPenalty(G.turn, pick ? "บอทคิดไม่ออก" : `บอทหาคำที่เชื่อมกับ “${from}” ไม่ได้`));
+      else act(() => doAccept(pick.w, pick.why, pick.meta));
+    }, reply ? 600 : 800 + Math.random() * 600);
+  })();
+}
+
+// ================= นาฬิกา (นับจากเวลาสิ้นสุดของตา ใช้แบบเดียวกันทุกเครื่อง) =================
+let lastTick = null;
+function tick() {
+  if (!G || $("game").hidden) return;
+  drawTimer();
+  if (G.over || !G.turnEndsAt || busy) return;
+  const left = (G.turnEndsAt - Date.now()) / 1000;
+  if (isMine() && left > 0 && left <= 5 && Math.ceil(left) !== lastTick) { lastTick = Math.ceil(left); sfx("tick") }
+  if (left > 0) return;
+  if (mode === "local") { if (!cur().bot) act(() => doPenalty(G.turn, "หมดเวลา")) }
+  else if (isMine()) act(() => doPenalty(G.turn, "หมดเวลา"));
+  else if (left <= -(10 + 4 * watchRank())) act(() => doPenalty(G.turn, "หมดเวลา (ไม่ได้ตอบ)")); // คนที่หลุดไป เครื่องอื่นปรับแทน
+}
+function watchRank() { const ids = alive().filter(p => p !== cur()).map(p => p.id); const i = ids.indexOf(me.id); return i < 0 ? 99 : i }
+function drawTimer() {
+  const t = G.cfg.time, on = !!(t && G.turnEndsAt && !G.over);
+  const left = !on ? t : busy && pausedLeft != null ? pausedLeft / 1000 : (G.turnEndsAt - Date.now()) / 1000;
+  const total = t * (G.started ? 1 : 2);
+  $("bar").style.width = (on ? Math.max(0, Math.min(1, left / total)) * 100 : 100) + "%";
+  $("timer").classList.toggle("low", on && left <= 5);
+  $("timer").classList.toggle("paused", busy || !isMine());
+  $("timer").style.visibility = on ? "visible" : "hidden";
+}
+
+// ================= แสดงผล =================
+const $ = id => document.getElementById(id);
+function setNote(text, kind = "") { note = text ? { text, kind } : null; drawMsg() }
+function drawMsg() { const m = note || G?.msg; $("msg").textContent = m?.text || ""; $("msg").className = "msg " + (m?.kind || "") }
+function bad(text) { setNote(text, "err"); shake() }
+function shake() { const f = $("field"); f.classList.remove("bad"); void f.offsetWidth; f.classList.add("bad") }
+function flash(w) {
+  for (const el of document.querySelectorAll("#trail li, #chain li")) el.classList.toggle("flash", el.dataset.w === w);
+  setTimeout(() => document.querySelectorAll(".flash").forEach(el => el.classList.remove("flash")), 1600);
+}
+function focusWord() { if (!matchMedia("(pointer: coarse)").matches || !$("osk").hidden) $("word").focus() }
+
+let histFor = null;
+function render() {
+  if (!G) return;
+  const list = words(), last = list.at(-1), first = !last, multi = G.players.length > 1, r = rules(), p = cur();
+  // ป้ายบอกตา
+  let tt = "";
+  if (!G.over && p) {
+    if (p.bot) tt = "บอทกำลังคิด…";
+    else if (mode === "online") tt = isMine() ? (first ? "คุณตั้งคำแรก" : "ถึงตาคุณแล้ว") : (first ? `${p.name} กำลังตั้งคำแรก` : `ตาของ ${p.name}`);
+    else tt = first ? `${p.name} ตั้งคำแรก` : multi ? `ตาของ ${p.name}` : "";
+  }
+  $("turn").textContent = tt; $("turn").classList.toggle("mine", mode === "online" && isMine() && !G.over);
+  // คำก่อนหน้า
+  const trail = $("trail"); trail.innerHTML = "";
+  const back = list.slice(-6, -1);
+  back.forEach((c, i) => { const li = document.createElement("li"); li.textContent = c.w; li.dataset.w = c.w; li.style.setProperty("--o", (.25 + .55 * (i + 1) / back.length).toFixed(2)); trail.append(li) });
+  // คำปัจจุบัน
+  const need = $("need"), shown = first ? "?" : last.w;
+  need.classList.toggle("empty", first);
+  if (need.textContent !== shown) { need.textContent = shown; need.classList.remove("in"); void need.offsetWidth; need.classList.add("in") }
+  $("lbl").textContent = (first ? "ยังไม่มีคำ" : list.length === 1 ? "คำแรก" : `คำที่ ${list.length}`) + (r.dialect === "mix" ? "" : r.dialect === "off" ? " · ภาษากลาง" : ` · ภาษา${r.dialect}`);
+  $("why").textContent = first ? (isRegion() ? `ตั้งคำนามภาษา${r.dialect}อะไรก็ได้ เช่น ${options(null).slice(0, 3).join(" ")}` : "ตั้งคำนามอะไรก็ได้ เช่น ทะเล บ้าน โรงเรียน") : list.length > 1 ? last.why : "คนต่อไปหาคำนามที่เชื่อมกับคำนี้";
+  $("tag").textContent = last?.dia ? `${last.dia === "ทับศัพท์" ? "คำทับศัพท์" : "ภาษา" + last.dia} · แปลว่า ${last.mean}` : "";
+  $("letterhint").textContent = r.letter && !first && !G.over ? `คำต่อไปขึ้นต้นด้วย ${lastOf(last.w)}` : "";
+  // ผู้เล่น
+  const pl = $("players"); pl.innerHTML = "";
+  if (multi) G.players.forEach((q, i) => {
+    const el = document.createElement("span");
+    el.className = "player" + (!G.over && i === G.turn ? " active" : "") + (q.out ? " out" : "");
+    el.append(q.name + (mode === "online" && q.id === me.id ? " (คุณ)" : "") + " ");
+    const b = document.createElement("b"); b.textContent = q.score; el.append(b);
+    if (G.cfg.lives > 1) { const h = document.createElement("span"); h.className = "lives"; const l = Math.max(0, q.lives); h.textContent = "●".repeat(l) + "○".repeat(G.cfg.lives - l); el.append(h) }
+    pl.append(el);
+  });
+  // ประวัติ
+  const ol = $("chain");
+  if (histFor !== G.id || ol.children.length > G.chain.length) { ol.innerHTML = ""; histFor = G.id; $("history").open = false }
+  let n = [...ol.children].filter(li => !li.classList.contains("event")).length;
+  for (let i = ol.children.length; i < G.chain.length; i++) {
+    const c = G.chain[i], li = document.createElement("li");
+    if (!c.w) { li.className = "event"; li.innerHTML = `<span class="n"></span><span class="b"><span class="r"></span></span>`; li.querySelector(".r").textContent = c.why }
+    else {
+      n++; li.dataset.w = c.w;
+      li.innerHTML = `<span class="n">${n}</span><span class="b"><span class="w"></span><span class="r"></span><span class="p"></span></span>`;
+      li.querySelector(".w").textContent = c.w;
+      li.querySelector(".r").textContent = c.why + (c.dia ? ` · ${c.dia} = ${c.mean}` : "");
+      li.querySelector(".p").textContent = G.players[c.by]?.name || "";
+    }
+    ol.append(li);
+  }
+  ol.scrollTop = ol.scrollHeight;
+  $("histcount").textContent = list.length;
+  $("history").hidden = first;
+  // ช่องพิมพ์และปุ่ม
+  const can = canType();
+  $("form").hidden = G.over;
+  for (const id of ["word", "send", "hint", "giveup"]) $(id).disabled = !can;
+  $("word").placeholder = G.over ? "" : busy ? "กำลังตัดสิน…" : !isMine() ? (p?.bot ? "บอทกำลังคิด…" : `รอ ${p?.name ?? ""}…`) : first ? "พิมพ์คำแรก…" : `คำนามที่เชื่อมกับ “${last.w}”…`;
+  // จบเกม
+  $("over").hidden = !G.over;
+  if (G.over && G.result) {
+    $("overtitle").textContent = G.result.title; $("overtext").textContent = G.result.text;
+    const host = mode === "online" && room.data?.host === me.id;
+    $("again").hidden = mode === "online" && !host;
+    $("leave").textContent = mode === "online" ? "ออกจากห้อง" : "กลับหน้าแรก";
+    if (mode === "online" && !host && !note) note = { text: "รอเจ้าของห้องเริ่มรอบใหม่ หรือออกจากห้อง", kind: "" };
+  }
+  drawMsg(); drawTimer(); updateAssist();
+}
+function renderJudge() {
+  $("judgedot").classList.toggle("on", judge === "claude");
+  $("judgetext").textContent = judge === "claude" ? "กรรมการ: Claude ตรวจทุกคำ" : judge === "offline" ? "กรรมการ: คลังคำในเครื่อง · คำที่ไม่อยู่ในคลังจะไม่ผ่าน" : "กำลังเชื่อมต่อกรรมการ…";
+}
+
+// ================= เสียง (สังเคราะห์ในเบราว์เซอร์ ไม่ต้องโหลดไฟล์) =================
+let actx = null, soundOn = store.get("ktc-sound", true);
+function audio() {
+  if (!soundOn) return null;
+  try { actx ||= new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume(); return actx } catch { return null }
+}
+function tone(freq, start, dur, type = "sine", vol = .18, slideTo) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + start, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + .05);
+}
+const SFX = {
+  start() { tone(392, 0, .1, "triangle", .12); tone(587, .09, .18, "triangle", .12) },
+  ok() { tone(660, 0, .12, "triangle"); tone(990, .08, .2, "triangle") },
+  bot() { tone(520, 0, .1, "sine", .12); tone(780, .07, .14, "sine", .12) },
+  bad() { tone(196, 0, .3, "sawtooth", .1, 110) },
+  out() { tone(440, 0, .18, "square", .07, 330); tone(330, .16, .22, "square", .07, 220); tone(220, .34, .4, "square", .07, 130) },
+  tick() { tone(1250, 0, .045, "square", .05) },
+  win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, i * .11, i === 3 ? .55 : .16, "triangle", .16)); tone(1568, .44, .4, "sine", .06) },
+  type() { tone(1700 + Math.random() * 400, 0, .02, "sine", .02) },
+  join() { tone(740, 0, .08, "sine", .1); tone(988, .07, .12, "sine", .1) },
+};
+function sfx(name) { if (soundOn) try { SFX[name]?.() } catch {} }
+function renderSound() { $("soundbtn").textContent = soundOn ? "เสียง เปิด" : "เสียง ปิด"; $("soundbtn").setAttribute("aria-pressed", soundOn) }
+
+// ================= ตัวช่วยพิมพ์ =================
+let suggestions = [], fixed = false;
+function onType() {
+  const inp = $("word");
+  if (cfg.autofix && /[A-Za-z]/.test(inp.value)) { inp.value = toThai(inp.value); fixed = true }
+  $("field").classList.remove("bad");
+  if (note?.kind === "err") setNote(null);
+  sfx("type");
+  updateAssist();
+}
+function updateAssist() {
+  const q = norm($("word").value), box = $("suggest"), live = $("live"), r = rules();
+  box.innerHTML = ""; suggestions = [];
+  if (!q || !canType()) { live.textContent = ""; live.className = "live"; if (!q) fixed = false; return }
+  const used = usedSet(), warn = cfg.warn;
+  const blocked = w => used.has(w) || takenMeaning(w) || !!sharedPart(w);
+  const diaWords = Object.keys(DIA).filter(w => !isRegion() || DIA[w].rs.has(r.dialect));
+  let pool = isRegion() ? diaWords
+    : !prev() && judge !== "claude" ? options(null) // คำแรกแบบออฟไลน์ แนะนำเฉพาะคำที่ตรวจต่อได้
+    : [...new Set([...BANK, ...(r.dialect === "mix" ? diaWords : []), ...(r.loan === "ban" ? [] : LOAN_ALL)])];
+  if (r.loan === "ban") pool = pool.filter(w => !isLoan(w));
+  const starts = pool.filter(w => w.startsWith(q) && w !== q).sort((a, b) => a.length - b.length);
+  const inside = pool.filter(w => !w.startsWith(q) && w.includes(q)).sort((a, b) => a.length - b.length);
+  suggestions = [...starts, ...inside].slice(0, 6);
+  const firstFree = suggestions.find(w => !warn || !blocked(w));
+  for (const w of suggestions) {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = w;
+    const tag = DIA[w] && r.dialect !== "off" ? diaLabel(w) : r.loan !== "ban" && LOAN_ALL.includes(w) ? "ทับศัพท์" : "";
+    if (tag) { const t = document.createElement("small"); t.textContent = tag; b.append(t) }
+    if (warn && blocked(w)) { b.className = "used"; b.disabled = true; b.title = "ซ้ำกับคำที่ใช้แล้ว" }
+    else { if (w === firstFree) b.className = "first"; b.title = "แตะเพื่อส่งคำนี้"; b.onclick = () => { $("word").value = w; submit() } }
+    box.append(b);
+  }
+  let text = "", kind = "";
+  if (warn) {
+    const sp = sharedPart(q);
+    if (used.has(q)) { text = "ซ้ำ · ใช้ไปแล้ว"; kind = "err" }
+    else if (sp) { text = `ซ้ำส่วนคำ “${sp.part}” กับ ${sp.with}`; kind = "err" }
+    else if (takenMeaning(q)) { text = "ความหมายซ้ำกับคำที่ใช้แล้ว"; kind = "err" }
+    else if (r.loan === "ban" && isLoan(q)) { text = "คำทับศัพท์ ใช้ไม่ได้"; kind = "err" }
+    else if (r.letter && prev() && firstIdx(q) >= 0 && firstOf(q) !== lastOf(prev())) { text = `ต้องขึ้นต้นด้วย ${lastOf(prev())}`; kind = "err" }
+    else { text = "✓ ไม่ซ้ำ"; kind = "ok" }
+  } else if (fixed) { text = "✓ แปลงเป็นไทยให้แล้ว"; kind = "ok" }
+  live.textContent = text; live.className = "live " + kind;
+}
+const OSK_ROWS = [["ภถุึคตจขช", "ๆไำพะัีรนยบลฃ", "ฟหกดเ้่าสวง", "ผปแอิืทมใฝ"],
+                  ["ู฿", "ฎฑธํ๊ณฯญฐฅ", "ฤฆฏโฌ็๋ษศซ", "ฉฮฺ์ฒฬฦ"]];
+let oskShift = false;
+function buildOsk() {
+  const osk = $("osk"); osk.innerHTML = "";
+  OSK_ROWS[oskShift ? 1 : 0].forEach((row, r) => {
+    const div = document.createElement("div"); div.className = "krow";
+    if (r === 3) div.append(key("Shift", "wide", () => { oskShift = !oskShift; buildOsk() }, oskShift));
+    for (const c of row) div.append(key(c, "", () => typeChar(c)));
+    if (r === 0) div.append(key("⌫", "wide", backspace));
+    if (r === 3) div.append(key("ส่ง", "wide go", () => submit()));
+    osk.append(div);
+  });
+}
+function key(label, cls, fn, pressed) {
+  const b = document.createElement("button"); b.type = "button"; b.textContent = label; if (cls) b.className = cls;
+  if (pressed !== undefined) b.setAttribute("aria-pressed", pressed);
+  b.addEventListener("mousedown", e => e.preventDefault());
+  b.addEventListener("click", () => { if (canType() || label === "Shift") fn() });
+  return b;
+}
+function typeChar(c) {
+  const inp = $("word"), a = inp.selectionStart ?? inp.value.length, b = inp.selectionEnd ?? a;
+  inp.value = inp.value.slice(0, a) + c + inp.value.slice(b);
+  inp.setSelectionRange(a + c.length, a + c.length);
+  if (oskShift) { oskShift = false; buildOsk() }
+  onType();
+}
+function backspace() {
+  const inp = $("word"), a = inp.selectionStart ?? inp.value.length, b = inp.selectionEnd ?? a;
+  const from = a === b ? Math.max(0, a - 1) : a;
+  inp.value = inp.value.slice(0, from) + inp.value.slice(b);
+  inp.setSelectionRange(from, from); updateAssist();
+}
+async function hint() {
+  if (!canType()) return;
+  const from = prev(), myTok = token;
+  const mask = w => w.slice(0, Math.ceil(w.length / 2)) + "•".repeat(w.length - Math.ceil(w.length / 2));
+  const local = options(from);
+  if (!from) { setNote(`ลองเริ่มด้วย: ${local.sort(() => Math.random() - .5).slice(0, 3).join(" · ")}`); return }
+  if (local.length) { setNote(`คำใบ้: ${mask(local[Math.floor(Math.random() * local.length)])}`); return }
+  if (judge !== "claude") { setNote(`คลังคำไม่มีคำที่ต่อจาก “${from}” แล้ว`); return }
+  $("hint").disabled = true; setNote("กำลังหาคำใบ้…");
+  try {
+    const res = await sample.json(`${RULES} ${extraRules()}\nคำที่ใช้ไปแล้ว: ${usedList()}\nขอคำใบ้: ${replyRule(from)}\nตอบ JSON อย่างเดียว: {"hint": "คำ"}`, { modelTier: "quick", cache: false });
+    if (myTok === token && typeof res?.hint === "string") setNote(`คำใบ้: ${mask(norm(res.hint))}`);
+  } catch (e) { dropClaude(e); if (myTok === token) setNote("หาคำใบ้ไม่สำเร็จ ลองนึกเองนะ") }
+  finally { if (G) render() }
+}
+
+// ================= หน้าจอ =================
+function show(screen) {
+  for (const id of ["home", "roomview", "game"]) $(id).hidden = id !== screen;
+  $("exitbtn").hidden = screen === "home";
+  $("exitbtn").textContent = screen === "game" && mode === "local" ? "จบเกม" : "ออกจากห้อง";
+  if (screen === "home") { G = null; busy = false; token++; clearTimeout(botTimer); renderHome() }
+  watchRoomList(screen === "home" && mode === "online");
+}
+const nameOf = i => (savedNames[i] || "").trim() || `ผู้เล่น ${i + 1}`;
+function startLocal() {
+  const players = Array.from({ length: cfg.count }, (_, i) => ({ id: "p" + i, name: nameOf(i) }));
+  if (cfg.bot) players.push({ id: "bot", name: "บอท", bot: true });
+  mode = "local";
+  G = newGameState(players, cfg);
+  token++; note = null; botReply = null; pausedLeft = null; busy = false; lastTick = null;
+  show("game"); sfx("start");
+  if (cfg.time) note = { text: "นาฬิกาเริ่มเดินหลังตั้งคำแรก", kind: "" };
+  render(); focusWord();
+}
+
+// ----- หน้าแรก -----
+function renderNames() {
+  const box = $("names"); box.innerHTML = "";
+  for (let i = 0; i < cfg.count; i++) {
+    const l = document.createElement("label"); l.htmlFor = "name" + i;
+    const num = document.createElement("span"); num.textContent = i + 1;
+    const inp = document.createElement("input"); inp.id = "name" + i; inp.type = "text"; inp.maxLength = 20;
+    inp.value = savedNames[i] || ""; inp.placeholder = `ผู้เล่น ${i + 1}`; inp.setAttribute("aria-label", `ชื่อผู้เล่น ${i + 1}`);
+    inp.oninput = () => { savedNames[i] = inp.value; store.set("ktc-names", savedNames) };
+    inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); ($("name" + (i + 1)) || $("start")).focus() } };
+    l.append(num, inp); box.append(l);
+  }
+  if (cfg.bot) { const l = document.createElement("label"); l.innerHTML = `<span>${cfg.count + 1}</span><span class="botname">บอท</span>`; box.append(l) }
+  $("count").textContent = cfg.count;
+  $("minus").disabled = cfg.count <= 1; $("plus").disabled = cfg.count >= 10;
+}
+function rulesSummary(r) {
+  return [r.time ? `${r.time} วิ` : "ไม่จับเวลา", `${r.lives} ชีวิต`, r.dialect === "mix" ? "ภาษาถิ่นได้" : r.dialect === "off" ? "ภาษากลาง" : `ภาษา${r.dialect}`,
+    r.loan === "ban" ? "ห้ามทับศัพท์" : "ทับศัพท์ได้", r.letter ? "ต่อตัวอักษร" : ""].filter(Boolean).join(" · ");
+}
+function renderHome() {
+  for (const [id, v] of [["mode", mode], ["dialect", cfg.dialect], ["loan", cfg.loan], ["time", String(cfg.time)], ["lives", String(cfg.lives)], ["diff", cfg.diff]])
+    for (const b of $(id).children) b.setAttribute("aria-pressed", b.dataset.v === v);
+  $("bot").checked = cfg.bot; $("diff").hidden = !cfg.bot;
+  $("letter").checked = cfg.letter; $("warn").checked = cfg.warn; $("autofix").checked = cfg.autofix;
+  $("localbox").hidden = mode !== "local"; $("onlinebox").hidden = mode !== "online"; $("start").hidden = mode !== "local";
+  $("diahelp").textContent = cfg.dialect === "off" ? "ใช้ได้เฉพาะภาษากลาง" : cfg.dialect === "mix" ? "ใช้ภาษากลางหรือภาษาถิ่นก็ได้"
+    : `ต้องตอบเป็นภาษา${cfg.dialect} เช่น ${Object.keys(DIA).filter(w => DIA[w].rs.has(cfg.dialect)).slice(0, 3).map(w => `${w} (${DIA[w].m})`).join(" ")}`;
+  $("loanhelp").textContent = cfg.loan === "ban" ? "คำทับศัพท์ เช่น คอมพิวเตอร์ ถือว่าผิด" : "ใช้ได้ แต่ห้ามความหมายซ้ำ เช่น สี → คัลเลอร์";
+  $("rulesum").textContent = rulesSummary(cfg);
+  if (document.activeElement !== $("myname")) $("myname").value = me.name;
+  renderNames(); renderOnlineNote();
+  $("statsline").textContent = `สถิติในเครื่องนี้: สายคำยาวที่สุด ${stats.best} คำ · เล่นจบ ${stats.games} เกม`;
+}
+
+// ================= ออนไลน์ =================
+const room = { db: null, user: null, canWrite: null, ref: null, code: null, data: null, players: [], unsub: null, unsubPlayers: null, unsubList: null, ready: false, err: null };
+// ลิงก์ของเกมนี้ + #รหัสห้อง: สแกนแล้วเปิดเกมพร้อมเข้าห้องให้
+const ARTIFACT_URL = location.href.split("#")[0];
+const joinLink = code => `${ARTIFACT_URL}#${code}`;
+function renderQr(code) {
+  const box = $("qr"); box.innerHTML = "";
+  if (!window.qrcode || !code) return;
+  try { const q = qrcode(0, "M"); q.addData(joinLink(code)); q.make(); box.innerHTML = q.createSvgTag(4, 0) } catch {}
+}
+let pendingJoin = null;
+const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const safeId = s => String(s).replace(/[^A-Za-z0-9_\-.~:@+]/g, "_").slice(0, 120);
+
+async function onlineInit() {
+  const use = n => window.claude?.use ? Promise.resolve(window.claude.use(n)).catch(() => null) : Promise.resolve(null);
+  [room.db, room.user] = await Promise.all([use("db"), use("user")]);
+  let id = null;
+  try { id = await room.user?.id() } catch {}
+  me.id = safeId(id || store.get("ktc-pid", null) || ("g" + Math.random().toString(36).slice(2, 10)));
+  if (!id) store.set("ktc-pid", me.id);
+  try { room.canWrite = room.user ? await room.user.can("data.write") : null } catch { room.canWrite = null }
+  if (!me.name) { // ใช้ชื่อจากบัญชี Claude ถ้ายังไม่ได้ตั้ง
+    try { const n = (await room.user?.name?.()) || ""; if (n) { me.name = n.slice(0, 20); store.set("ktc-myname", me.name); if (document.activeElement !== $("myname")) $("myname").value = me.name } } catch {}
+  }
+  room.ready = true;
+  renderOnlineNote();
+  if (pendingJoin && !$("home").hidden) {
+    const c = pendingJoin; pendingJoin = null;
+    if (me.name && onlineReady()) joinRoom(c);
+    else if (onlineReady()) { onlineMsg(`ใส่ชื่อของคุณ แล้วกด “เข้าห้อง” เพื่อเข้าห้อง ${c}`); $("myname").focus() }
+  }
+  if (mode === "online" && !$("home").hidden) watchRoomList(true);
+}
+const onlineReady = () => !!room.db && room.canWrite !== false;
+function onlineMsg(text) { room.err = text; renderOnlineNote() }
+function renderOnlineNote() {
+  const n = $("onlinenote"), lastCode = store.get("ktc-lastroom", null), off = !onlineReady();
+  $("create").disabled = off || !room.ready; $("joinbtn").disabled = off || !room.ready;
+  n.className = "small" + ((off && room.ready) || room.err ? " err" : "");
+  n.textContent = room.err || (!room.ready ? "กำลังเชื่อมต่อ…"
+    : !room.db ? "โหมดออนไลน์ยังไม่เปิด: ใส่ค่า Firebase ในไฟล์ firebase-config.js ตามคู่มือ README"
+    : room.canWrite === false ? "บัญชีนี้มีสิทธิ์แค่ดู ขอให้เจ้าของเกมแชร์ให้คุณแบบแก้ไขได้ก่อน"
+    : `สร้างห้องแล้วส่งรหัสหรือให้เพื่อนสแกน QR${lastCode ? ` · ห้องล่าสุดของคุณ: ${lastCode}` : ""}`);
+}
+function watchRoomList(on) {
+  room.unsubList?.(); room.unsubList = null;
+  if (!on || !room.db) { $("roomlist").innerHTML = ""; return }
+  try {
+    room.unsubList = room.db.collection("rooms").where("status", "==", "lobby").limit(30).onSnapshot(snap => { // เรียงในเครื่อง ไม่ต้องสร้างดัชนีเพิ่ม
+      const box = $("roomlist"); box.innerHTML = "";
+      const fresh = snap.docs.map(d => d.data()).filter(d => d && Date.now() - (d.createdAt || 0) < 3 * 3600e3)
+        .sort((a, b) => b.createdAt - a.createdAt).slice(0, 8);
+      if (fresh.length) { const h = document.createElement("h3"); h.textContent = "ห้องที่เปิดรออยู่"; box.append(h) }
+      for (const d of fresh) {
+        const it = document.createElement("div"); it.className = "roomitem";
+        const b = document.createElement("b"); b.textContent = d.code;
+        const s = document.createElement("span"); s.textContent = `${d.hostName || "ใครสักคน"} · ${rulesSummary(d.cfg || cfg)}`;
+        const j = document.createElement("button"); j.type = "button"; j.className = "pill ghost"; j.textContent = "เข้าร่วม"; j.onclick = () => joinRoom(d.code);
+        it.append(b, s, j); box.append(it);
+      }
+    }, () => {});
+  } catch {}
+}
+function needName() {
+  me.name = $("myname").value.trim();
+  if (!me.name) { onlineMsg("ใส่ชื่อของคุณก่อน เพื่อนจะได้รู้ว่าใคร"); $("myname").focus(); return true }
+  store.set("ktc-myname", me.name); room.err = null; return false;
+}
+async function createRoom() {
+  if (!onlineReady() || needName()) return;
+  $("create").disabled = true;
+  try {
+    let code, ref;
+    for (let i = 0; i < 6; i++) {
+      code = Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join("");
+      ref = room.db.doc("rooms/" + code);
+      const s = await ref.get();
+      if (!s.exists || Date.now() - (s.data().updatedAt || 0) > 6 * 3600e3) break;
+    }
+    const r = cfg;
+    await ref.set({ code, host: me.id, hostName: me.name, status: "lobby", createdAt: Date.now(), updatedAt: Date.now(),
+      cfg: { time: r.time, lives: r.lives, letter: r.letter, dialect: r.dialect, loan: r.loan, diff: r.diff }, game: null });
+    await enterRoom(code);
+  } catch (e) { onlineError(e) }
+  finally { renderOnlineNote() }
+}
+async function joinRoom(raw) {
+  if (!onlineReady() || needName()) return;
+  const code = String(raw || $("joincode").value).trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (code.length !== 4) { onlineMsg("รหัสห้องมี 4 ตัว"); return }
+  try {
+    const s = await room.db.doc("rooms/" + code).get();
+    const d = s.exists ? s.data() : null;
+    if (!d || d.status === "closed") { onlineMsg(`ไม่พบห้อง ${code} ลองตรวจรหัสอีกครั้ง`); return }
+    await enterRoom(code);
+  } catch (e) { onlineError(e) }
+}
+async function enterRoom(code) {
+  leaveSubs();
+  room.code = code; room.ref = room.db.doc("rooms/" + code); room.data = null; room.players = []; room.err = null;
+  store.set("ktc-lastroom", code);
+  await room.ref.collection("players").doc(me.id).set({ id: me.id, name: me.name, joinedAt: Date.now() });
+  mode = "online"; G = null;
+  $("roomcode").textContent = code; $("copycode").textContent = "คัดลอกรหัส"; $("copylink").textContent = "คัดลอกลิงก์เข้าห้อง";
+  renderQr(code);
+  show("roomview"); renderRoom();
+  const ref = room.ref;
+  room.unsub = ref.onSnapshot(s => { if (room.ref === ref) onRoom(s.exists ? s.data() : null) }, e => onlineError(e));
+  room.unsubPlayers = ref.collection("players").orderBy("joinedAt").onSnapshot(s => {
+    if (room.ref !== ref) return;
+    const before = room.players.length;
+    room.players = s.docs.map(d => d.data()).filter(Boolean);
+    if (before && room.players.length > before) sfx("join");
+    renderRoom();
+  }, () => {});
+}
+function leaveSubs() { room.unsub?.(); room.unsubPlayers?.(); room.unsub = room.unsubPlayers = null }
+async function leaveRoom(msg) {
+  const ref = room.ref, wasHost = room.data?.host === me.id, status = room.data?.status;
+  leaveSubs(); room.ref = null; room.code = null; room.data = null; room.players = [];
+  mode = "online"; room.err = msg || null; show("home");
+  if (!ref) return;
+  try {
+    await ref.collection("players").doc(me.id).delete();
+    if (wasHost && status === "lobby") await ref.update({ status: "closed", updatedAt: Date.now() });
+  } catch {}
+}
+function onlineError(e) {
+  const m = e?.code === "quota_exceeded" || e?.code === "resource-exhausted" ? "พื้นที่เก็บห้องเต็ม ลองอีกครั้งภายหลัง" : e?.code === "revoked" ? "สิทธิ์เข้าถึงเกมนี้เปลี่ยนไป"
+    : (e?.code === "invalid_argument" || e?.code === "permission-denied") ? "บันทึกข้อมูลห้องไม่ได้ ตรวจกฎใน firestore.rules" : "เชื่อมต่อไม่สำเร็จ ลองอีกครั้ง";
+  if (!$("home").hidden) onlineMsg(m); else setNote(m, "err");
+}
+// ข้อมูลห้องเปลี่ยน (จากเครื่องเราเองหรือของเพื่อน)
+function onRoom(d) {
+  if (!d || d.status === "closed") { leaveRoom("เจ้าของห้องปิดห้องแล้ว"); return }
+  room.data = d;
+  if (!d.game) { if ($("roomview").hidden) show("roomview"); renderRoom(); return }
+  const g = d.game;
+  if (G && g.id === G.id && g.rev <= G.rev) { if (G.over) render(); return }
+  const old = G && G.id === g.id ? G : null;
+  G = JSON.parse(JSON.stringify(g));
+  token++; busy = false; pausedLeft = null; note = null; lastTick = null;
+  if ($("game").hidden) { show("game"); sfx("start") }
+  if (old) {
+    if (G.over && !old.over) sfx(endSound());
+    else if (G.chain.length > old.chain.length) {
+      const last = G.chain.at(-1);
+      sfx(last.w ? "ok" : G.players.filter(p => p.out).length > old.players.filter(p => p.out).length ? "out" : "bad");
+    }
+  }
+  afterChange();
+}
+// ส่งสถานะเกมขึ้นห้อง: จองสิทธิ์เขียนสั้นๆ แล้วเขียนเฉพาะเมื่อไม่มีใครเปลี่ยนก่อนเรา
+async function pushGame(game, base) {
+  const ref = room.ref; if (!ref) return;
+  // สิทธิ์เขียนหมดอายุเองเท่านั้น (สั้นสุด 1 วินาที) จึงรอแล้วลองใหม่ได้หลายครั้ง
+  for (let attempt = 0; attempt < 25; attempt++) {
+    try {
+      const lease = await ref.acquire({ holder: me.id, ttlMs: 1000 });
+      if (!lease.acquired) { await sleep(150 + Math.random() * 200); continue }
+      const s = await ref.get(), d = s.exists ? s.data() : null;
+      if (room.ref !== ref) return;
+      if (!d || !d.game || d.game.id !== game.id || d.game.rev !== base) { if (d) { G = null; onRoom(d) } return } // มีคนเปลี่ยนก่อน ใช้สถานะในห้อง
+      await ref.set({ ...d, game, status: game.over ? "over" : "playing", updatedAt: Date.now() });
+      return;
+    } catch (e) {
+      if (e?.code === "revoked" || e?.code === "invalid_argument" || e?.code === "permission-denied") { onlineError(e); break }
+      await sleep(500 + Math.random() * 500);
+    }
+  }
+  if (room.ref !== ref) return;
+  setNote("ส่งข้อมูลไม่สำเร็จ กำลังโหลดสถานะห้องใหม่", "err");
+  try { const s = await ref.get(); if (s.exists && room.ref === ref) { G = null; onRoom(s.data()) } } catch {}
+}
+function renderRoom() {
+  const d = room.data, host = d?.host === me.id;
+  const ul = $("roomplayers"); ul.innerHTML = "";
+  for (const p of room.players) {
+    const li = document.createElement("li"); li.textContent = p.name + (p.id === me.id ? " (คุณ)" : "");
+    if (p.id === d?.host) { const s = document.createElement("small"); s.textContent = "เจ้าของห้อง"; li.append(s) }
+    ul.append(li);
+  }
+  $("roomcount").textContent = room.players.length;
+  $("roomrules").textContent = d ? "กติกา: " + rulesSummary(d.cfg) : "";
+  $("roomstart").hidden = !host;
+  $("roomstart").disabled = room.players.length < 2;
+  $("roomwait").textContent = !d ? "กำลังเข้าห้อง…" : host ? (room.players.length < 2 ? "รอเพื่อนเข้าห้องอย่างน้อย 1 คน" : "พร้อมแล้ว กดเริ่มเกมได้เลย") : `รอ ${d.hostName} เริ่มเกม`;
+}
+async function startOnline() {
+  const d = room.data; if (!d || d.host !== me.id) return;
+  if (room.players.length < 2) { setNote("ต้องมีผู้เล่นในห้องอย่างน้อย 2 คน", "err"); return }
+  const keep = G; mode = "online";
+  G = newGameState(room.players.map(p => ({ id: p.id, name: p.name })), d.cfg); resetDeadline();
+  const g = G; G = keep;
+  try { await room.ref.set({ ...d, status: "playing", game: g, updatedAt: Date.now() }) } catch (e) { onlineError(e) }
+}
+
+// ================= ผูกปุ่ม =================
+function seg(id, onPick) {
+  $(id).addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b || !b.dataset.v) return;
+    onPick(b.dataset.v); saveCfg(); renderHome();
+  });
+}
+seg("mode", v => { mode = v; room.err = null; watchRoomList(v === "online") });
+seg("dialect", v => cfg.dialect = v);
+seg("loan", v => cfg.loan = v);
+seg("time", v => cfg.time = +v);
+seg("lives", v => cfg.lives = +v);
+seg("diff", v => cfg.diff = v);
+for (const id of ["bot", "letter", "warn", "autofix"]) $(id).onchange = e => { cfg[id] = e.target.checked; saveCfg(); renderHome() };
+$("minus").onclick = () => { cfg.count = Math.max(1, cfg.count - 1); saveCfg(); renderNames() };
+$("plus").onclick = () => { cfg.count = Math.min(10, cfg.count + 1); saveCfg(); renderNames() };
+$("start").onclick = startLocal;
+$("create").onclick = createRoom;
+$("joinbtn").onclick = () => joinRoom();
+$("joincode").onkeydown = e => { if (e.key === "Enter") joinRoom() };
+$("myname").oninput = e => { me.name = e.target.value.trim(); store.set("ktc-myname", me.name) };
+$("roomstart").onclick = startOnline;
+$("copycode").onclick = () => {
+  const done = () => $("copycode").textContent = "คัดลอกแล้ว";
+  const select = () => { const r = document.createRange(); r.selectNodeContents($("roomcode")); getSelection().removeAllRanges(); getSelection().addRange(r) };
+  try { navigator.clipboard.writeText(room.code || "").then(done, select) } catch { select() }
+};
+$("copylink").onclick = () => {
+  const done = () => $("copylink").textContent = "คัดลอกลิงก์แล้ว";
+  try { navigator.clipboard.writeText(joinLink(room.code || "")).then(done, () => onlineMsg(joinLink(room.code || ""))) } catch {}
+};
+const exitGame = () => { if (mode === "online" && room.ref) leaveRoom(); else show("home") };
+$("exitbtn").onclick = exitGame;
+$("leave").onclick = exitGame;
+$("again").onclick = () => mode === "local" ? startLocal() : startOnline();
+$("helpbtn").onclick = () => { const open = $("help").hidden; $("help").hidden = !open; $("helpbtn").setAttribute("aria-expanded", open) };
+$("soundbtn").onclick = () => { soundOn = !soundOn; store.set("ktc-sound", soundOn); renderSound(); sfx("join") };
+$("form").addEventListener("submit", e => { e.preventDefault(); submit() });
+$("word").addEventListener("input", onType);
+$("word").addEventListener("keydown", e => {
+  if (e.key === "Tab" && !e.shiftKey) {
+    const w = suggestions.find(x => !cfg.warn || !(usedSet().has(x) || takenMeaning(x) || sharedPart(x)));
+    if (w && $("word").value) { e.preventDefault(); $("word").value = w; updateAssist() }
+  } else if (e.key === "Escape") { $("word").value = ""; fixed = false; updateAssist() }
+});
+$("kbtoggle").onclick = () => {
+  const open = $("osk").hidden;
+  $("osk").hidden = !open; $("kbtoggle").setAttribute("aria-pressed", open);
+  $("word").setAttribute("inputmode", open ? "none" : "text");
+  if (open) buildOsk();
+  $("word").focus();
+};
+$("hint").onclick = hint;
+$("giveup").onclick = () => { if (canType()) act(() => doEliminate(G.turn, "ยอมแพ้")) };
+
+const hashCode = decodeURIComponent(location.hash.slice(1)).toUpperCase();
+if (/^[A-Z0-9]{4}$/.test(hashCode)) { pendingJoin = hashCode; mode = "online"; $("joincode").value = hashCode }
+renderSound();
+renderJudge();
+show("home");
+setInterval(tick, 250);
+(async () => {
+  try { sample = window.claude?.use ? await window.claude.use("sample") : null } catch { sample = null }
+  judge = sample ? "claude" : "offline";
+  renderJudge();
+})();
+onlineInit();
+</script>
+</body>
+</html>

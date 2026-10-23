@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ห้องเกม: ทุกคนที่เข้าเกมแล้ว (ล็อกอินแบบไม่ระบุตัวตน) อ่านและเขียนได้
+    match /rooms/{code} {
+      allow read, write: if request.auth != null;
+      // รายชื่อผู้เล่นในห้อง: แต่ละคนเขียนได้เฉพาะของตัวเอง
+      match /players/{pid} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == pid;
+      }
+    }
+    // สิทธิ์เขียนชั่วคราว กันสองคนแก้เกมพร้อมกัน
+    match /leases/{id} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
