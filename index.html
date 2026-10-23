@@ -322,7 +322,7 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
   <footer class="foot"><span class="dot" id="judgedot"></span><span id="judgetext">กำลังเชื่อมต่อกรรมการ…</span></footer>
 </div>
 
-<script src="firebase-config.js"></script>
+<script src="firebase-config.js?v=202610240349"></script>
 <script>
 // เชื่อมเกมกับ Firebase แทนฐานข้อมูลของ Claude (ใช้เมื่อใส่ค่าใน firebase-config.js แล้ว)
 (() => {
@@ -334,7 +334,8 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
     for (const m of ["app", "auth", "firestore"]) await load(`https://www.gstatic.com/firebasejs/${V}/firebase-${m}-compat.js`);
     firebase.initializeApp(cfg);
     const auth = firebase.auth();
-    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    // บางเบราว์เซอร์ในแอป/โหมดส่วนตัวเก็บข้อมูลถาวรไม่ได้ ให้ใช้แบบชั่วคราวแทน
+    try { await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL) } catch { await auth.setPersistence(firebase.auth.Auth.Persistence.NONE) }
     if (!auth.currentUser) await auth.signInAnonymously();
     const fs = firebase.firestore();
     // สิทธิ์เขียนชั่วคราวแบบเดียวกับของ Claude: ได้ถ้าไม่มีใครถืออยู่หรือหมดอายุแล้ว
@@ -350,7 +351,11 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
     const u = auth.currentUser;
     const user = { id: async () => u.uid, can: async () => true, name: async () => u.displayName || "" };
     return { db: fs, user };
-  })().catch(e => { console.error("Firebase", e); return null });
+  })().catch(e => {
+    console.error("Firebase", e);
+    window.ONLINE_NOTE = `เชื่อมต่อเซิร์ฟเวอร์ออนไลน์ไม่สำเร็จ (${e?.code || e?.message || "ไม่ทราบสาเหตุ"}) ลองรีเฟรชหน้า หรือเปิดลิงก์ใน Safari/Chrome`;
+    return null;
+  });
   window.claude = { use: async n => { const r = await ready; return n === "db" ? r?.db ?? null : n === "user" ? r?.user ?? null : null } };
 })();
 </script>
@@ -1167,7 +1172,7 @@ function renderOnlineNote() {
   $("create").disabled = off || !room.ready; $("joinbtn").disabled = off || !room.ready;
   n.className = "small" + ((off && room.ready) || room.err ? " err" : "");
   n.textContent = room.err || (!room.ready ? "กำลังเชื่อมต่อ…"
-    : !room.db ? "โหมดออนไลน์ยังไม่เปิด: ใส่ค่า Firebase ในไฟล์ firebase-config.js ตามคู่มือ README"
+    : !room.db ? (window.ONLINE_NOTE || "โหมดออนไลน์ยังไม่เปิด: ใส่ค่า Firebase ในไฟล์ firebase-config.js ตามคู่มือ README")
     : room.canWrite === false ? "บัญชีนี้มีสิทธิ์แค่ดู ขอให้เจ้าของเกมแชร์ให้คุณแบบแก้ไขได้ก่อน"
     : `สร้างห้องแล้วส่งรหัสหรือให้เพื่อนสแกน QR${lastCode ? ` · ห้องล่าสุดของคุณ: ${lastCode}` : ""}`);
 }
