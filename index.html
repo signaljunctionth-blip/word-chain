@@ -91,7 +91,21 @@ details.rules summary::-webkit-details-marker { display: none }
 details.rules summary b { font-weight: 600 }
 details.rules summary span { font-size: .8rem; color: var(--muted); text-align: right }
 details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
+.vocabform { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; gap: 8px }
+@media (max-width: 480px) { .vocabform { grid-template-columns: minmax(0, 1fr) } }
+.vocablist { display: flex; flex-wrap: wrap; gap: 6px }
+.vocablist span { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 3px 4px 3px 12px }
+.vocablist button { width: 22px; height: 22px; border-radius: 50%; color: var(--muted); font-size: .9rem }
+.vocablist button:hover { color: var(--hot); background: var(--hot-soft) }
 .join { display: flex; gap: 8px }
+.join .text:placeholder-shown { letter-spacing: normal; font-weight: 400 }
+.checkout { display: grid; gap: 6px; font-size: .9rem }
+.checkout:empty { display: none }
+.checkout .ok { color: var(--good); font-weight: 600 }
+.checkout .no { color: var(--hot); font-weight: 600 }
+.checkout .muted { color: var(--muted); font-size: .84rem }
+.checkout .words { display: flex; flex-wrap: wrap; gap: 4px }
+.checkout .words button { font: 400 1rem var(--f-hand); color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 0 10px }
 .join .text { text-transform: uppercase; letter-spacing: .2em; font-weight: 600; max-width: 140px }
 .rooms { display: grid; gap: 6px }
 .rooms:empty { display: none }
@@ -206,6 +220,7 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
       <li>ตอบได้ครั้งเดียวต่อตา ตอบผิดหรือหมดเวลาเสีย 1 ชีวิตและเสียตา ชีวิตหมดหรือยอมแพ้ = ตกรอบ</li>
       <li>ห้ามซ้ำ ทั้งคำเดิม ส่วนของคำ (น้ำ → แม่น้ำ, ต้นไม้ → ดอกไม้) และความหมายเดิม (สี → คัลเลอร์, ตลาด → กาด)</li>
       <li>ใช้ภาษาถิ่นและคำทับศัพท์ได้ตามกติกาที่ตั้งไว้</li>
+      <li>เพิ่มคู่คำที่เชื่อมกันเองได้ที่ “คลังคำ” ในหน้าแรก</li>
       <li>ตัวช่วยพิมพ์: แตะคำแนะนำเพื่อส่งทันที · <b>Tab</b> เติมคำแรก · <b>Esc</b> ล้าง · ลืมเปลี่ยนภาษาระบบแปลงให้</li>
     </ol>
     <p class="small" id="statsline"></p>
@@ -253,6 +268,27 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
         <div class="opt"><span>ต่อตัวอักษรท้ายด้วย<small>คำใหม่ต้องขึ้นต้นด้วยพยัญชนะตัวท้ายของคำก่อน</small></span><input class="switch" type="checkbox" id="letter" aria-label="ต่อตัวอักษรท้ายด้วย"></div>
         <div class="opt"><span>เตือนก่อนส่ง (โหมดง่าย)<small>บอกระหว่างพิมพ์ว่าคำหรือความหมายซ้ำ</small></span><input class="switch" type="checkbox" id="warn" aria-label="เตือนก่อนส่ง"></div>
         <div class="opt"><span>แก้ลืมเปลี่ยนภาษา<small>พิมพ์ด้วยแป้นอังกฤษ ระบบแปลงเป็นไทยให้ เช่น lyo → สัน</small></span><input class="switch" type="checkbox" id="autofix" aria-label="แก้ลืมเปลี่ยนภาษา"></div>
+      </div>
+    </details>
+
+    <details class="card rules" id="vocabbox">
+      <summary><b>คลังคำ</b><span id="vocabsum"></span></summary>
+      <div class="opts">
+        <p class="small">เพิ่มคู่คำที่เชื่อมกันเอง ใช้กับกรรมการคลังคำในเครื่อง ถ้าสร้างห้องออนไลน์ เพื่อนในห้องจะใช้คู่คำของคุณด้วย (Claude ตัดสินคำได้ทุกคำอยู่แล้ว)</p>
+        <form class="vocabform" id="vocabform" autocomplete="off">
+          <input class="text" id="vword" lang="th" maxlength="30" placeholder="คำ เช่น ทะเล" aria-label="คำ">
+          <input class="text" id="vlinks" lang="th" maxlength="120" placeholder="คำที่เชื่อมกัน เช่น ปลา เรือ ทราย" aria-label="คำที่เชื่อมกัน คั่นด้วยเว้นวรรค">
+          <button class="pill" type="submit">เพิ่ม</button>
+        </form>
+        <p class="small" id="vocabmsg"></p>
+        <div class="vocablist" id="vocablist"></div>
+        <h3>ตรวจคำ</h3>
+        <form class="vocabform" id="checkform" autocomplete="off">
+          <input class="text" id="cword" lang="th" maxlength="30" placeholder="คำก่อนหน้า เช่น ทะเล" aria-label="คำก่อนหน้า">
+          <input class="text" id="cnext" lang="th" maxlength="30" placeholder="คำที่จะตอบ เช่น ปลา (เว้นว่างได้)" aria-label="คำที่จะตอบ">
+          <button class="pill ghost" type="submit">ตรวจ</button>
+        </form>
+        <div class="checkout" id="checkout" aria-live="polite"></div>
       </div>
     </details>
 
@@ -322,7 +358,7 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
   <footer class="foot"><span class="dot" id="judgedot"></span><span id="judgetext">กำลังเชื่อมต่อกรรมการ…</span></footer>
 </div>
 
-<script src="firebase-config.js?v=202610240349"></script>
+<script src="firebase-config.js?v=202610240354"></script>
 <script>
 // เชื่อมเกมกับ Firebase แทนฐานข้อมูลของ Claude (ใช้เมื่อใส่ค่าใน firebase-config.js แล้ว)
 (() => {
@@ -458,7 +494,93 @@ const LINKS = `ทะเล: ปลา เรือ ทราย คลื่น
 เปียโน: ดนตรี เพลง
 ไมโครโฟน: นักร้อง เพลง
 ชีส: นม หนู
-โทรทัศน์: บ้าน วิทยุ`;
+โทรทัศน์: บ้าน วิทยุ
+หมา: กระดูก ปลอกคอ สัตวแพทย์
+แมว: ปลาทู หนวด กระบะทราย
+ม้า: อานม้า เกือกม้า คอกม้า
+เป็ด: ไข่เป็ด บึง
+หมู: เล้าหมู ลูกหมู ข้าวหมูแดง
+ผึ้ง: น้ำผึ้ง รังผึ้ง ดอกไม้
+นก: รังนก ปีก
+งู: พิษงู หมองู ป่า
+เสือ: ลายเสือ
+ยุง: มุ้ง ยากันยุง ไข้เลือดออก
+มด: น้ำตาล รังมด
+แมงมุม: ใยแมงมุม
+เต่า: กระดอง ทะเล
+กบ: นา บ่อ ลูกอ๊อด
+ก๋วยเตี๋ยว: ตะเกียบ ชาม ลูกชิ้น
+ต้มยำ: กุ้ง ตะไคร้ มะนาว พริก
+แกงเขียวหวาน: กะทิ ไก่ ข้าว
+ขนมปัง: เนย เตาอบ แป้ง
+แป้ง: ขนม
+น้ำตาล: ขนม กาแฟ อ้อย
+กาแฟ: ร้านกาแฟ นม แก้ว
+ชา: ถ้วยชา กาน้ำชา ใบชา
+ผลไม้: ทุเรียน มังคุด เงาะ ลำไย ลิ้นจี่ ส้ม องุ่น
+ทุเรียน: หนาม
+ส้ม: น้ำส้ม เปลือกส้ม
+มะนาว: พริก
+พริก: น้ำพริก ครก
+ครก: สาก
+ผัก: ผักบุ้ง กะหล่ำปลี ถั่วงอก แตงกวา
+ห้องน้ำ: สบู่ ยาสีฟัน แปรงสีฟัน ฝักบัว ผ้าเช็ดตัว
+แปรงสีฟัน: ยาสีฟัน ฟัน
+ฟัน: หมอฟัน
+บ้าน: ห้องน้ำ ห้องนั่งเล่น บันได รั้ว
+ห้องนั่งเล่น: โทรทัศน์ พรม
+โต๊ะ: เก้าอี้
+เตียง: หมอน ผ้าห่ม ที่นอน ห้องนอน
+ตู้เย็น: น้ำแข็ง
+นาฬิกา: เวลา ข้อมือ
+โทรศัพท์: เบอร์โทร ข้อความ
+กระเป๋า: กระเป๋าสตางค์ สมุด หนังสือ
+รองเท้า: ถุงเท้า เท้า เชือกรองเท้า
+เสื้อผ้า: ตู้เสื้อผ้า ไม้แขวนเสื้อ เตารีด กระดุม
+เข็ม: ด้าย กระดุม
+กรรไกร: กระดาษ ผม
+หวี: ผม กระจก
+ผม: ร้านตัดผม
+กระจก: หน้าต่าง
+ตา: แว่นตา คิ้ว น้ำตา
+มือ: นิ้ว เล็บ ถุงมือ
+หัวใจ: เลือด ความรัก
+ปาก: ฟัน ลิ้น
+นักเรียน: ชุดนักเรียน การบ้าน
+ห้องเรียน: กระดาน โต๊ะ ครู
+ดินสอ: ยางลบ กระดาษ
+ห้องสมุด: บรรณารักษ์
+ไม้บรรทัด: ดินสอ ยางลบ
+รถไฟ: สถานีรถไฟ ราง ตั๋ว
+เครื่องบิน: สนามบิน นักบิน ตั๋ว
+สนามบิน: กระเป๋าเดินทาง หนังสือเดินทาง
+จักรยาน: ล้อ กระดิ่ง หมวกกันน็อก
+รถจักรยานยนต์: หมวกกันน็อก ถนน
+รถเมล์: ป้ายรถเมล์ ถนน
+ถนน: รถเมล์ ทางม้าลาย
+หมอ: เข็มฉีดยา
+ตำรวจ: สถานีตำรวจ
+ทหาร: ปืน ค่ายทหาร
+พ่อครัว: ห้องครัว ร้านอาหาร
+นักร้อง: เวที
+ไปรษณีย์: จดหมาย บุรุษไปรษณีย์ พัสดุ
+จดหมาย: ซองจดหมาย
+ภูเขา: ยอดเขา หิมะ น้ำตก ป่า
+น้ำตก: ป่า หิน
+ทะเลทราย: อูฐ ทราย
+หิมะ: ฤดูหนาว ตุ๊กตาหิมะ
+ดวงอาทิตย์: แสงแดด กลางวัน
+ไฟ: ควัน ไม้ขีดไฟ เทียน นักดับเพลิง
+เทียน: วันเกิด เค้ก
+วันเกิด: ของขวัญ เค้ก
+สงกรานต์: น้ำ ปืนฉีดน้ำ ดินสอพอง
+ลอยกระทง: กระทง แม่น้ำ
+กระทง: ใบตอง เทียน ธูป
+วัด: พระ ธูป เจดีย์ โบสถ์
+พระ: บาตร จีวร
+มวยไทย: นักมวย เวที นวม
+สระว่ายน้ำ: น้ำ แว่นตาว่ายน้ำ
+สนาม: ลู่วิ่ง`;
 
 // คลังคำนามสำหรับคำแนะนำตอนพิมพ์ (ไม่ได้บอกว่าคำไหนเชื่อมกัน จึงไม่เฉลย)
 const EXTRA = `กา กบ กระดาษ กระต่าย กางเกง กาแฟ กุ้ง เก้าอี้ กล้อง กระเป๋า กรรไกร กวาง กะทิ กีฬา กระจก กุญแจ เกวียน ขา ข้าวเหนียว ขนม ขวด ขยะ ขนุน ขวาน ของขวัญ เข็ม ขนมปัง ขลุ่ย ขิง เขื่อน คน ครู เครื่องบิน คลอง ค้างคาว คางคก ครอบครัว คะแนน ควัน คลื่น คอ คาง โคม ครัว ฆ้อง งู งาน งา เงาะ จาน จมูก จักรยาน จิ้งจก จระเข้ จดหมาย จังหวัด จรวด จุด เจดีย์ แจกัน ฉลาม ฉิ่ง ฉาก ช้าง ชา ช้อน ชาม ชมพู่ ชาวนา ชุด ช่าง ชะนี เชือก ชิงช้า ซอง ซอย ซาลาเปา ซีอิ๊ว ญาติ ฐาน เณร ดาว ดิน ดอกไม้ เด็ก ดนตรี ดินสอ ด้าย แดด ดาบ ดอกบัว โดม ตา ต้นไม้ ตุ๊กตา ตะเกียบ เต่า ตู้เย็น ตำรวจ ตึก แตงโม โต๊ะ ตะกร้า ตั๋ว ตำนาน ถนน ถุง ถ้วย ถั่ว ถ้ำ ถาด ถุงเท้า ทะเล ทหาร ทอง ทุเรียน ทราย ทับทิม ทวีป ทูต ธง ธรรมชาติ ธนาคาร ธนู นก น้ำ นม นาฬิกา นักเรียน นิ้ว เนย น้ำแข็ง นางฟ้า นาค นาก นิทาน บ้าน บัว บันได บะหมี่ บึง ใบไม้ บริษัท บ่อ บวบ บาตร ปลา ปู ประตู ปากกา ปืน ป่า ปีก เป็ด แป้ง ประเทศ ปลาทู ปาก ปิ่นโต ปลาวาฬ ผม ผัก ผีเสื้อ ผ้า ผลไม้ ผึ้ง ผิว ผักบุ้ง ฝน ฝรั่ง ฝุ่น ฝา ฝ้าย พ่อ พระ พริก พัดลม เพลง เพื่อน แพะ พลอย พายุ พจนานุกรม พรม ฟัน ฟ้า ไฟ ไฟฉาย ฟาง ฟักทอง ฟอง ภูเขา ภาษา ภาพ ภาชนะ แม่ แมว มะม่วง มด มือ ม้า มะพร้าว เมฆ เมือง มีด มะนาว ไม้ มังคุด มะละกอ ยาย ยา ยักษ์ ยีราฟ ยุง ยาง ยานอวกาศ รถ ร่ม เรือ รองเท้า โรงเรียน รุ้ง ราชินี ราง ร้าน ไร่ ระฆัง รูป รั้ว ลิง ลม ลูก ลำไย ล้อ โลก ลาบ ลิ้นจี่ ลำธาร ลูกโป่ง เลื่อย วัว วัด ว่าว แว่นตา วิทยุ วาฬ วุ้นเส้น วิชา ศาลา ศิลปะ ศีรษะ ศาสนา สุนัข เสือ สิงโต สวน สะพาน สมุด เสื้อ สับปะรด ส้ม แสง สบู่ สมอง สนาม หมา หมู หมี หนังสือ หัวใจ หิมะ เห็ด หญ้า หลังคา หน้าต่าง หอย หนู หมวก หม้อ หมึก หาด หิน หนอน อาหาร อากาศ อูฐ อ้อย อินทรี องุ่น อวกาศ อิฐ อาจารย์ อีกา อ่าง`;
@@ -524,8 +646,18 @@ const saveCfg = () => store.set("ktc-cfg", cfg);
 
 // ================= คลังคำ =================
 const graph = {};
-function link(a, b) { if (a === b) return; (graph[a] ||= new Set()).add(b); (graph[b] ||= new Set()).add(a) }
-for (const line of LINKS.split("\n")) { const [a, rest] = line.split(":"); for (const b of rest.trim().split(/\s+/)) link(a.trim(), b) }
+function link(a, b) { if (!a || !b || a === b) return; (graph[a] ||= new Set()).add(b); (graph[b] ||= new Set()).add(a) }
+// คู่คำที่ผู้เล่นเพิ่มเอง [คำ, คำที่เชื่อมกัน] เก็บในเครื่อง และคู่คำของห้องออนไลน์ที่เจ้าของห้องแชร์มา
+let myLinks = store.get("ktc-mylinks", []);
+let roomLinks = [];
+let bankReady = false; // BANK ถูกสร้างทีหลัง จึงเติมคำเข้า BANK ได้หลังจากนั้นเท่านั้น
+function buildGraph() {
+  for (const k in graph) delete graph[k];
+  for (const line of LINKS.split("\n")) { const [a, rest] = line.split(":"); for (const b of rest.trim().split(/\s+/)) link(a.trim(), b) }
+  for (const [a, b] of [...myLinks, ...roomLinks]) link(a, b);
+  if (bankReady) { for (const w of Object.keys(graph)) if (!BANK.includes(w)) BANK.push(w); KNOWN = null }
+}
+buildGraph();
 const linked = (a, b) => !!graph[a]?.has(b);
 
 const REGIONS = ["อีสาน", "เหนือ", "ใต้"];
@@ -547,6 +679,7 @@ const canon = w => DIA[w]?.m ?? LOANMEAN[w] ?? SYN[w] ?? w;
 
 const BANK = [...new Set([...Object.keys(graph), ...EXTRA.split(/\s+/), ...learned])];
 let KNOWN = null;
+bankReady = true;
 function learn(w) { if (BANK.includes(w)) return; BANK.push(w); learned.push(w); store.set("ktc-bank", learned); KNOWN = null }
 const known = () => KNOWN ||= new Set([...BANK, ...Object.keys(DIA), ...PARTS].filter(w => w.length >= 2));
 // แยกคำประสมเป็นคำย่อยที่รู้จัก ให้ได้น้อยชิ้นที่สุด (ต้นไม้ → ต้น + ไม้)
@@ -1127,6 +1260,7 @@ function renderHome() {
   $("rulesum").textContent = rulesSummary(cfg);
   if (document.activeElement !== $("myname")) $("myname").value = me.name;
   renderNames(); renderOnlineNote();
+  renderVocab();
   $("statsline").textContent = `สถิติในเครื่องนี้: สายคำยาวที่สุด ${stats.best} คำ · เล่นจบ ${stats.games} เกม`;
 }
 
@@ -1213,7 +1347,7 @@ async function createRoom() {
     }
     const r = cfg;
     await ref.set({ code, host: me.id, hostName: me.name, status: "lobby", createdAt: Date.now(), updatedAt: Date.now(),
-      cfg: { time: r.time, lives: r.lives, letter: r.letter, dialect: r.dialect, loan: r.loan, diff: r.diff }, game: null });
+      cfg: { time: r.time, lives: r.lives, letter: r.letter, dialect: r.dialect, loan: r.loan, diff: r.diff }, links: myLinks, game: null });
     await enterRoom(code);
   } catch (e) { onlineError(e) }
   finally { renderOnlineNote() }
@@ -1252,6 +1386,7 @@ function leaveSubs() { room.unsub?.(); room.unsubPlayers?.(); room.unsub = room.
 async function leaveRoom(msg) {
   const ref = room.ref, wasHost = room.data?.host === me.id, status = room.data?.status;
   leaveSubs(); room.ref = null; room.code = null; room.data = null; room.players = [];
+  if (roomLinks.length) { roomLinks = []; buildGraph() }
   mode = "online"; room.err = msg || null; show("home");
   if (!ref) return;
   try {
@@ -1268,6 +1403,8 @@ function onlineError(e) {
 function onRoom(d) {
   if (!d || d.status === "closed") { leaveRoom("เจ้าของห้องปิดห้องแล้ว"); return }
   room.data = d;
+  const rl = Array.isArray(d.links) ? d.links.filter(x => Array.isArray(x) && x.length === 2) : [];
+  if (JSON.stringify(rl) !== JSON.stringify(roomLinks)) { roomLinks = rl; buildGraph() }
   if (!d.game) { if ($("roomview").hidden) show("roomview"); renderRoom(); return }
   const g = d.game;
   if (G && g.id === G.id && g.rev <= G.rev) { if (G.over) render(); return }
@@ -1328,6 +1465,91 @@ async function startOnline() {
   const g = G; G = keep;
   try { await room.ref.set({ ...d, status: "playing", game: g, updatedAt: Date.now() }) } catch (e) { onlineError(e) }
 }
+
+// ================= คลังคำของฉัน =================
+function renderVocab() {
+  const words = new Set(Object.keys(graph)), pairs = Object.values(graph).reduce((n, s) => n + s.size, 0) / 2;
+  $("vocabsum").textContent = `${words.size} คำ · ${pairs} คู่${myLinks.length ? ` · ของคุณ ${myLinks.length} คู่` : ""}`;
+  const box = $("vocablist"); box.innerHTML = "";
+  const byWord = {};
+  for (const [a, b] of myLinks) (byWord[a] ||= []).push(b);
+  for (const [a, bs] of Object.entries(byWord)) {
+    const chip = document.createElement("span"); chip.textContent = `${a} → ${bs.join(", ")}`;
+    const x = document.createElement("button"); x.type = "button"; x.textContent = "×"; x.title = `ลบคู่คำของ ${a}`; x.setAttribute("aria-label", `ลบคู่คำของ ${a}`);
+    x.onclick = () => { myLinks = myLinks.filter(([w]) => w !== a); store.set("ktc-mylinks", myLinks); buildGraph(); renderVocab(); $("vocabmsg").textContent = `ลบคู่คำของ “${a}” แล้ว` };
+    chip.append(x); box.append(chip);
+  }
+}
+$("vocabform").addEventListener("submit", e => {
+  e.preventDefault();
+  const fix = v => cfg.autofix ? toThai(v) : v;
+  const a = norm(fix($("vword").value)), bs = fix($("vlinks").value).split(/[\s,]+/).map(norm).filter(Boolean);
+  const msg = $("vocabmsg");
+  if (!a || !bs.length) { msg.className = "small err"; msg.textContent = "ใส่คำ และคำที่เชื่อมกันอย่างน้อย 1 คำ"; return }
+  if (![a, ...bs].every(w => THAI.test(w))) { msg.className = "small err"; msg.textContent = "ใช้ได้เฉพาะตัวอักษรไทย"; return }
+  let added = 0;
+  for (const b of bs) if (b !== a && !linked(a, b)) { myLinks.push([a, b]); added++ }
+  myLinks = myLinks.slice(-300); // เก็บไม่เกิน 300 คู่
+  store.set("ktc-mylinks", myLinks); buildGraph(); renderVocab();
+  msg.className = "small"; msg.textContent = added ? `เพิ่ม ${added} คู่: ${a} → ${bs.join(", ")}` : "คู่คำนี้มีอยู่ในคลังแล้ว";
+  $("vword").value = ""; $("vlinks").value = ""; $("vword").focus();
+});
+
+// ตัวช่วยตรวจคำ: ดูว่าคำเชื่อมกันในคลังไหม ความหมาย ภาษาถิ่น/ทับศัพท์ และคำที่ต่อได้ ถามกรรมการ Claude ได้ถ้ามี
+function wordInfo(w) {
+  const bits = [];
+  if (DIA[w]) bits.push(`ภาษา${diaLabel(w)} แปลว่า ${DIA[w].m}`);
+  if (LOANMEAN[w]) bits.push(`คำทับศัพท์ แปลว่า ${LOANMEAN[w]}`);
+  else if (isLoan(w)) bits.push("คำทับศัพท์");
+  if (SYN[w]) bits.push(`ความหมายเดียวกับ ${SYN[w]}`);
+  if (!graph[canon(w)] && !BANK.includes(w) && !DIA[w]) bits.push("ยังไม่มีในคลังคำ");
+  return bits.join(" · ");
+}
+function line(cls, text) { const p = document.createElement("div"); p.className = cls; p.textContent = text; return p }
+function wordButtons(list, onPick) {
+  const box = document.createElement("div"); box.className = "words";
+  for (const w of list) { const b = document.createElement("button"); b.type = "button"; b.textContent = w; b.onclick = () => onPick(w); box.append(b) }
+  return box;
+}
+let checkTok = 0;
+async function runCheck() {
+  const fix = v => cfg.autofix ? toThai(v) : v;
+  const a = norm(fix($("cword").value)), b = norm(fix($("cnext").value)), out = $("checkout"), my = ++checkTok;
+  out.innerHTML = "";
+  if (!a) { out.append(line("no", "พิมพ์คำที่ต้องการตรวจก่อน")); return }
+  if (![a, b].filter(Boolean).every(w => THAI.test(w))) { out.append(line("no", "ใช้ได้เฉพาะตัวอักษรไทย")); return }
+  const infoA = wordInfo(a);
+  if (infoA) out.append(line("muted", `${a}: ${infoA}`));
+  const next = [...(graph[canon(a)] || [])].flatMap(formsOf).filter(w => w !== a);
+  if (b) {
+    const infoB = wordInfo(b);
+    if (infoB) out.append(line("muted", `${b}: ${infoB}`));
+    if (canon(a) === canon(b)) out.append(line("no", `✗ “${a}” กับ “${b}” ความหมายเดียวกัน ตอบต่อกันไม่ได้`));
+    else if (linked(canon(a), canon(b))) out.append(line("ok", `✓ “${a}” → “${b}” เชื่อมกันในคลังคำ`));
+    else out.append(line("no", `✗ คลังคำยังไม่มีคู่ “${a}” → “${b}”`));
+  }
+  if (next.length) { out.append(line("muted", `คำที่ต่อจาก “${a}” ได้ในคลัง (${next.length} คำ) แตะเพื่อตรวจ:`)); out.append(wordButtons([...new Set(next)].slice(0, 24), w => { $("cnext").value = w; runCheck() })) }
+  else out.append(line("muted", `คลังคำยังไม่มีคำที่ต่อจาก “${a}” เพิ่มเองได้ด้านบน`));
+  // ถามกรรมการ Claude เมื่อมี (เฉพาะคู่ที่คลังยังไม่มี)
+  if (b && judge === "claude" && !linked(canon(a), canon(b)) && canon(a) !== canon(b)) {
+    const ask = document.createElement("button"); ask.type = "button"; ask.className = "pill ghost"; ask.textContent = "ถามกรรมการ Claude";
+    ask.onclick = async () => {
+      ask.disabled = true; ask.textContent = "กำลังถาม…";
+      const v = await judgeWord(a, b, false);
+      if (my !== checkTok) return;
+      ask.remove();
+      if (v.retry || v.err) { out.append(line("no", v.retry || v.err)); return }
+      out.append(line(v.valid ? "ok" : "no", `${v.valid ? "✓ Claude: ผ่าน" : "✗ Claude: ไม่ผ่าน"} · ${v.reason}`));
+      if (v.valid) {
+        const add = document.createElement("button"); add.type = "button"; add.className = "pill"; add.textContent = `เพิ่ม “${a} → ${b}” เข้าคลังคำของฉัน`;
+        add.onclick = () => { myLinks.push([a, b]); store.set("ktc-mylinks", myLinks); buildGraph(); renderVocab(); add.replaceWith(line("ok", "เพิ่มแล้ว")) };
+        out.append(add);
+      }
+    };
+    out.append(ask);
+  }
+}
+$("checkform").addEventListener("submit", e => { e.preventDefault(); runCheck() });
 
 // ================= ผูกปุ่ม =================
 function seg(id, onPick) {
