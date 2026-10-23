@@ -332,7 +332,7 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
 
     <form class="entry" id="form" autocomplete="off">
       <div class="field" id="field">
-        <input id="word" type="text" lang="th" autocomplete="off" spellcheck="false" placeholder="พิมพ์คำนาม…" aria-label="คำนามของคุณ">
+        <input id="word" type="text" lang="th" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="พิมพ์คำนาม…" aria-label="คำนามของคุณ">
         <button class="send" type="submit" id="send">ส่ง</button>
       </div>
       <div class="suggest" id="suggest" aria-label="คำแนะนำ"></div>
@@ -361,7 +361,7 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
   <footer class="foot"><span class="dot" id="judgedot"></span><span id="judgetext">กำลังเชื่อมต่อกรรมการ…</span></footer>
 </div>
 
-<script src="firebase-config.js?v=202610240357"></script>
+<script src="firebase-config.js?v=202610240406"></script>
 <script>
 // เชื่อมเกมกับ Firebase แทนฐานข้อมูลของ Claude (ใช้เมื่อใส่ค่าใน firebase-config.js แล้ว)
 (() => {
@@ -374,7 +374,9 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
     firebase.initializeApp(cfg);
     const auth = firebase.auth();
     // บางเบราว์เซอร์ในแอป/โหมดส่วนตัวเก็บข้อมูลถาวรไม่ได้ ให้ใช้แบบชั่วคราวแทน
-    try { await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL) } catch { await auth.setPersistence(firebase.auth.Auth.Persistence.NONE) }
+    // บางเบราว์เซอร์ในแอปเก็บข้อมูลถาวรไม่ได้: ลองถาวร → ระหว่างเปิดแท็บ → ชั่วคราว (ถ้าตัวตนเปลี่ยน เกมรับที่นั่งคืนจากชื่อเดิมได้)
+    const P = firebase.auth.Auth.Persistence;
+    for (const mode of [P.LOCAL, P.SESSION, P.NONE]) { try { await auth.setPersistence(mode); break } catch {} }
     if (!auth.currentUser) await auth.signInAnonymously();
     const fs = firebase.firestore();
     // สิทธิ์เขียนชั่วคราวแบบเดียวกับของ Claude: ได้ถ้าไม่มีใครถืออยู่หรือหมดอายุแล้ว
@@ -941,7 +943,11 @@ async function submit() {
   if (mode === "local" && G.turnEndsAt) pausedLeft = G.turnEndsAt - Date.now();
   setNote(`กำลังตัดสิน “${w}”…`); render();
   const v = await judgeWord(from, w, withReply);
-  if (myTok !== token || !G) return; // สถานะเกมเปลี่ยนไปแล้ว (เช่น หมดเวลาจากอีกเครื่อง)
+  if (!G) return;
+  if (myTok !== token) { // สถานะเกมเปลี่ยนระหว่างตัดสิน (เช่น อีกเครื่องเพิ่งบันทึก) คำตอบนี้ยังไม่ถูกส่ง
+    if (canType()) { $("word").value = w; setNote("สถานะเกมเพิ่งเปลี่ยน คำตอบยังไม่ถูกส่ง กดส่งอีกครั้งได้", "err"); render() }
+    return;
+  }
   busy = false;
   if (pausedLeft != null) { G.turnEndsAt = Date.now() + pausedLeft; pausedLeft = null }
   if (v.retry || v.err) { if (v.err) bad(v.err); else setNote(v.retry, "err"); render(); return }
@@ -1031,6 +1037,7 @@ function render() {
   let tt = "";
   if (!G.over && p) {
     if (p.bot) tt = "บอทกำลังคิด…";
+    else if (mode === "online" && !G.players.some(q => q.id === me.id)) tt = `ตาของ ${p.name} · คุณกำลังชม รอบหน้าจะได้เล่น`;
     else if (mode === "online") tt = isMine() ? (first ? "คุณตั้งคำแรก" : "ถึงตาคุณแล้ว") : (first ? `${p.name} กำลังตั้งคำแรก` : `ตาของ ${p.name}`);
     else tt = first ? `${p.name} ตั้งคำแรก` : multi ? `ตาของ ${p.name}` : "";
   }
@@ -1223,6 +1230,7 @@ async function hint() {
 
 // ================= หน้าจอ =================
 function show(screen) {
+  if (screen === "game" && $("game").hidden) { $("word").value = ""; fixed = false }
   for (const id of ["home", "roomview", "game"]) $(id).hidden = id !== screen;
   $("exitbtn").hidden = screen === "home";
   $("exitbtn").textContent = screen === "game" && mode === "local" ? "จบเกม" : "ออกจากห้อง";
@@ -1396,6 +1404,8 @@ async function enterRoom(code) {
     renderRoom();
   }, () => {});
 }
+// คนเดียวกันอาจกลับมาด้วยตัวตนใหม่ (เบราว์เซอร์ในแอปจำการล็อกอินไม่ได้) ให้นับชื่อละหนึ่งคน ใช้รายการล่าสุด
+function roomPlayers() { return [...new Map(room.players.map(p => [String(p.name).trim(), p])).values()] }
 function leaveSubs() { room.unsub?.(); room.unsubPlayers?.(); room.unsubLive?.(); room.unsub = room.unsubPlayers = room.unsubLive = null; room.typing = null }
 async function leaveRoom(msg) {
   const ref = room.ref, wasHost = room.data?.host === me.id, status = room.data?.status;
@@ -1413,6 +1423,20 @@ function onlineError(e) {
     : (e?.code === "invalid_argument" || e?.code === "permission-denied") ? "บันทึกข้อมูลห้องไม่ได้ ตรวจกฎใน firestore.rules" : "เชื่อมต่อไม่สำเร็จ ลองอีกครั้ง";
   if (!$("home").hidden) onlineMsg(m); else setNote(m, "err");
 }
+// กลับมาด้วยตัวตนใหม่แต่ชื่อเดิม: รับที่นั่งเดิมในเกมคืน พร้อมเริ่มเวลาของตานั้นใหม่
+let reclaimFor = null;
+function maybeReclaim() {
+  if (mode !== "online" || !G || G.over || !me.name || reclaimFor === G.id || G.players.some(p => p.id === me.id)) return;
+  const i = G.players.findIndex(p => !p.bot && !p.out && String(p.name).trim() === me.name.trim());
+  if (i < 0) return;
+  reclaimFor = G.id;
+  const base = G.rev;
+  G.players[i].id = me.id;
+  if (G.turn === i) resetDeadline();
+  G.rev = base + 1; token++;
+  pushGame(JSON.parse(JSON.stringify(G)), base);
+  setNote(`กลับเข้าที่นั่งของ ${me.name} แล้ว เล่นต่อได้เลย`, "ok");
+}
 // ข้อมูลห้องเปลี่ยน (จากเครื่องเราเองหรือของเพื่อน)
 function onRoom(d) {
   if (!d || d.status === "closed") { leaveRoom("เจ้าของห้องปิดห้องแล้ว"); return }
@@ -1426,6 +1450,7 @@ function onRoom(d) {
   G = JSON.parse(JSON.stringify(g));
   token++; busy = false; pausedLeft = null; note = null; lastTick = null;
   if ($("game").hidden) { show("game"); sfx("start") }
+  maybeReclaim();
   if (old) {
     if (G.over && !old.over) sfx(endSound());
     else if (G.chain.length > old.chain.length) {
@@ -1486,23 +1511,24 @@ function renderTyping() {
 
 function renderRoom() {
   const d = room.data, host = d?.host === me.id;
-  const ul = $("roomplayers"); ul.innerHTML = "";
-  for (const p of room.players) {
+  const ul = $("roomplayers"), list = roomPlayers(); ul.innerHTML = "";
+  for (const p of list) {
     const li = document.createElement("li"); li.textContent = p.name + (p.id === me.id ? " (คุณ)" : "");
     if (p.id === d?.host) { const s = document.createElement("small"); s.textContent = "เจ้าของห้อง"; li.append(s) }
     ul.append(li);
   }
-  $("roomcount").textContent = room.players.length;
+  $("roomcount").textContent = list.length;
   $("roomrules").textContent = d ? "กติกา: " + rulesSummary(d.cfg) : "";
   $("roomstart").hidden = !host;
-  $("roomstart").disabled = room.players.length < 2;
-  $("roomwait").textContent = !d ? "กำลังเข้าห้อง…" : host ? (room.players.length < 2 ? "รอเพื่อนเข้าห้องอย่างน้อย 1 คน" : "พร้อมแล้ว กดเริ่มเกมได้เลย") : `รอ ${d.hostName} เริ่มเกม`;
+  $("roomstart").disabled = list.length < 2;
+  $("roomwait").textContent = !d ? "กำลังเข้าห้อง…" : host ? (list.length < 2 ? "รอเพื่อนเข้าห้องอย่างน้อย 1 คน" : "พร้อมแล้ว กดเริ่มเกมได้เลย") : `รอ ${d.hostName} เริ่มเกม`;
 }
 async function startOnline() {
   const d = room.data; if (!d || d.host !== me.id) return;
-  if (room.players.length < 2) { setNote("ต้องมีผู้เล่นในห้องอย่างน้อย 2 คน", "err"); return }
+  const list = roomPlayers();
+  if (list.length < 2) { setNote("ต้องมีผู้เล่นในห้องอย่างน้อย 2 คน", "err"); return }
   const keep = G; mode = "online";
-  G = newGameState(room.players.map(p => ({ id: p.id, name: p.name })), d.cfg); resetDeadline();
+  G = newGameState(list.map(p => ({ id: p.id, name: p.name })), d.cfg); resetDeadline();
   const g = G; G = keep;
   try { await room.ref.set({ ...d, status: "playing", game: g, updatedAt: Date.now() }) } catch (e) { onlineError(e) }
 }
