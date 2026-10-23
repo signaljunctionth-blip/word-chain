@@ -127,6 +127,8 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
 .turn { font-size: 1rem; font-weight: 600; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 6px 18px; animation: drop .25s ease-out }
 .turn.mine { background: var(--accent); color: var(--surface) }
 .turn:empty { display: none }
+.typing { font: 400 1.15rem var(--f-hand); color: var(--muted); min-height: 1.5em; margin-top: -8px }
+.typing:empty::before { content: " "; white-space: pre }
 .trail { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 8px; min-height: 1.6em; font-family: var(--f-hand); font-size: 1.05rem; color: var(--muted) }
 .trail li { opacity: var(--o, .6) }
 .trail li + li::before { content: "→"; font-family: var(--f-body); font-size: .8rem; margin-right: 8px; opacity: .6 }
@@ -316,6 +318,7 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
   <!-- เกม -->
   <main class="screen stage" id="game" hidden>
     <div class="turn" id="turn" aria-live="polite"></div>
+    <div class="typing" id="typing" aria-live="polite"></div>
     <ol class="trail" id="trail" aria-label="คำก่อนหน้า"></ol>
     <div class="current">
       <span class="lbl" id="lbl"></span>
@@ -358,7 +361,7 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
   <footer class="foot"><span class="dot" id="judgedot"></span><span id="judgetext">กำลังเชื่อมต่อกรรมการ…</span></footer>
 </div>
 
-<script src="firebase-config.js?v=202610240354"></script>
+<script src="firebase-config.js?v=202610240357"></script>
 <script>
 // เชื่อมเกมกับ Firebase แทนฐานข้อมูลของ Claude (ใช้เมื่อใส่ค่าใน firebase-config.js แล้ว)
 (() => {
@@ -382,6 +385,15 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
         if (l && l.exp > now && l.holder !== holder) return { acquired: false, expiresAt: new Date(l.exp).toISOString() };
         t.set(lease, { holder, exp: now + Math.max(1000, Math.min(ttlMs, 600000)) });
         return { acquired: true, holder };
+      });
+    };
+    // อ่าน-ตรวจ-เขียนสถานะเกมในธุรกรรมเดียว (เร็วกว่าและไม่ต้องรอสิทธิ์เขียน)
+    firebase.firestore.DocumentReference.prototype.swapGame = function (next) {
+      return fs.runTransaction(async t => {
+        const snap = await t.get(this), d = snap.exists ? snap.data() : null, body = next(d);
+        if (!body) return { conflict: true, data: d };
+        t.set(this, body);
+        return { conflict: false };
       });
     };
     const u = auth.currentUser;
@@ -979,7 +991,7 @@ function scheduleBot() {
 let lastTick = null;
 function tick() {
   if (!G || $("game").hidden) return;
-  drawTimer();
+  drawTimer(); renderTyping();
   if (G.over || !G.turnEndsAt || busy) return;
   const left = (G.turnEndsAt - Date.now()) / 1000;
   if (isMine() && left > 0 && left <= 5 && Math.ceil(left) !== lastTick) { lastTick = Math.ceil(left); sfx("tick") }
@@ -1078,7 +1090,7 @@ function render() {
     $("leave").textContent = mode === "online" ? "ออกจากห้อง" : "กลับหน้าแรก";
     if (mode === "online" && !host && !note) note = { text: "รอเจ้าของห้องเริ่มรอบใหม่ หรือออกจากห้อง", kind: "" };
   }
-  drawMsg(); drawTimer(); updateAssist();
+  drawMsg(); drawTimer(); updateAssist(); renderTyping();
 }
 function renderJudge() {
   $("judgedot").classList.toggle("on", judge === "claude");
@@ -1120,6 +1132,7 @@ function onType() {
   if (cfg.autofix && /[A-Za-z]/.test(inp.value)) { inp.value = toThai(inp.value); fixed = true }
   $("field").classList.remove("bad");
   if (note?.kind === "err") setNote(null);
+  sendTyping();
   sfx("type");
   updateAssist();
 }
@@ -1374,6 +1387,7 @@ async function enterRoom(code) {
   show("roomview"); renderRoom();
   const ref = room.ref;
   room.unsub = ref.onSnapshot(s => { if (room.ref === ref) onRoom(s.exists ? s.data() : null) }, e => onlineError(e));
+  room.unsubLive = ref.collection("live").doc("typing").onSnapshot(s => { if (room.ref === ref) { room.typing = s.exists ? s.data() : null; renderTyping() } }, () => {});
   room.unsubPlayers = ref.collection("players").orderBy("joinedAt").onSnapshot(s => {
     if (room.ref !== ref) return;
     const before = room.players.length;
@@ -1382,7 +1396,7 @@ async function enterRoom(code) {
     renderRoom();
   }, () => {});
 }
-function leaveSubs() { room.unsub?.(); room.unsubPlayers?.(); room.unsub = room.unsubPlayers = null }
+function leaveSubs() { room.unsub?.(); room.unsubPlayers?.(); room.unsubLive?.(); room.unsub = room.unsubPlayers = room.unsubLive = null; room.typing = null }
 async function leaveRoom(msg) {
   const ref = room.ref, wasHost = room.data?.host === me.id, status = room.data?.status;
   leaveSubs(); room.ref = null; room.code = null; room.data = null; room.players = [];
@@ -1421,28 +1435,55 @@ function onRoom(d) {
   }
   afterChange();
 }
-// ส่งสถานะเกมขึ้นห้อง: จองสิทธิ์เขียนสั้นๆ แล้วเขียนเฉพาะเมื่อไม่มีใครเปลี่ยนก่อนเรา
+// ส่งสถานะเกมขึ้นห้องให้เร็วที่สุด: อ่าน-ตรวจว่าไม่มีใครเปลี่ยนก่อน-เขียน
+// ถ้าฐานข้อมูลมีธุรกรรม (Firebase) ทำในธุรกรรมเดียว ไม่ต้องรอสิทธิ์เขียน
 async function pushGame(game, base) {
   const ref = room.ref; if (!ref) return;
-  // สิทธิ์เขียนหมดอายุเองเท่านั้น (สั้นสุด 1 วินาที) จึงรอแล้วลองใหม่ได้หลายครั้ง
-  for (let attempt = 0; attempt < 25; attempt++) {
+  const next = d => !d || !d.game || d.game.id !== game.id || d.game.rev !== base ? null
+    : { ...d, game, status: game.over ? "over" : "playing", updatedAt: Date.now() };
+  const adopt = d => { if (d && room.ref === ref) { G = null; onRoom(d) } }; // มีคนเปลี่ยนก่อน ใช้สถานะในห้อง
+  for (let attempt = 0; attempt < 4; attempt++) {
     try {
-      const lease = await ref.acquire({ holder: me.id, ttlMs: 1000 });
-      if (!lease.acquired) { await sleep(150 + Math.random() * 200); continue }
+      if (ref.swapGame) {
+        const r = await ref.swapGame(next);
+        if (r.conflict) adopt(r.data);
+        return;
+      }
       const s = await ref.get(), d = s.exists ? s.data() : null;
       if (room.ref !== ref) return;
-      if (!d || !d.game || d.game.id !== game.id || d.game.rev !== base) { if (d) { G = null; onRoom(d) } return } // มีคนเปลี่ยนก่อน ใช้สถานะในห้อง
-      await ref.set({ ...d, game, status: game.over ? "over" : "playing", updatedAt: Date.now() });
+      const body = next(d);
+      if (!body) { adopt(d); return }
+      await ref.set(body);
       return;
     } catch (e) {
-      if (e?.code === "revoked" || e?.code === "invalid_argument" || e?.code === "permission-denied") { onlineError(e); break }
-      await sleep(500 + Math.random() * 500);
+      if (["revoked", "invalid_argument", "permission-denied"].includes(e?.code)) { onlineError(e); break }
+      await sleep(300 + Math.random() * 400);
     }
   }
   if (room.ref !== ref) return;
   setNote("ส่งข้อมูลไม่สำเร็จ กำลังโหลดสถานะห้องใหม่", "err");
-  try { const s = await ref.get(); if (s.exists && room.ref === ref) { G = null; onRoom(s.data()) } } catch {}
+  try { const s = await ref.get(); if (s.exists) adopt(s.data()) } catch {}
 }
+
+// ----- เห็นเพื่อนกำลังพิมพ์แบบเรียลไทม์ (เอกสารเล็กแยก ส่งไม่เกินราว 0.7 วินาทีครั้ง) -----
+let typingTimer = null, typingLast = 0, typingSent = "";
+function sendTyping() {
+  if (mode !== "online" || !room.ref || !canType()) return;
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(() => {
+    const text = norm($("word").value).slice(0, 30);
+    if (!room.ref || !G || text === typingSent) return;
+    typingLast = Date.now(); typingSent = text;
+    room.ref.collection("live").doc("typing").set({ by: me.id, name: me.name, text, at: Date.now(), gid: G.id, rev: G.rev }).catch(() => {});
+  }, Math.max(0, 700 - (Date.now() - typingLast)));
+}
+function renderTyping() {
+  const el = $("typing"), t = room.typing, p = cur();
+  const show = mode === "online" && t && G && !G.over && p && !isMine() && t.by === p.id && t.gid === G.id && t.rev === G.rev && Date.now() - t.at < 8000;
+  const text = !show ? "" : t.text ? `${p.name} กำลังพิมพ์ “${t.text}”` : "";
+  if (el.textContent !== text) el.textContent = text;
+}
+
 function renderRoom() {
   const d = room.data, host = d?.host === me.id;
   const ul = $("roomplayers"); ul.innerHTML = "";

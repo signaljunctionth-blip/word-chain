@@ -4,6 +4,10 @@ service cloud.firestore {
     // ห้องเกม: ทุกคนที่เข้าเกมแล้ว (ล็อกอินแบบไม่ระบุตัวตน) อ่านและเขียนได้
     match /rooms/{code} {
       allow read, write: if request.auth != null;
+      // สิ่งที่กำลังพิมพ์ (แสดงให้คนอื่นเห็นแบบเรียลไทม์)
+      match /live/{doc} {
+        allow read, write: if request.auth != null;
+      }
       // รายชื่อผู้เล่นในห้อง: แต่ละคนเขียนได้เฉพาะของตัวเอง
       match /players/{pid} {
         allow read: if request.auth != null;
