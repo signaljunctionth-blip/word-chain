@@ -219,7 +219,7 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
   <section class="sheet" id="help" hidden aria-label="วิธีเล่น">
     <ol>
       <li>ผลัดกันตอบคำนามที่ความหมายเชื่อมกับคำก่อนหน้าโดยตรง เช่น ทะเล → ปลา → ตลาด → เงิน คนแรกตั้งคำอะไรก็ได้</li>
-      <li>ตอบได้ครั้งเดียวต่อตา ตอบผิดหรือหมดเวลาเสีย 1 ชีวิตและเสียตา ชีวิตหมดหรือยอมแพ้ = ตกรอบ</li>
+      <li>ตอบได้ครั้งเดียวต่อตา ตอบผิดกติกาหรือหมดเวลาเสีย 1 ชีวิตและเสียตา ชีวิตหมดหรือยอมแพ้ = ตกรอบ ถ้าระบบไม่แน่ใจว่าเชื่อมกัน จะไม่ปรับ ให้ลองคำอื่น</li>
       <li>ห้ามซ้ำ ทั้งคำเดิม ส่วนของคำ (น้ำ → แม่น้ำ, ต้นไม้ → ดอกไม้) และความหมายเดิม (สี → คัลเลอร์, ตลาด → กาด)</li>
       <li>ใช้ภาษาถิ่นและคำทับศัพท์ได้ตามกติกาที่ตั้งไว้</li>
       <li>เพิ่มคู่คำที่เชื่อมกันเองได้ที่ “คลังคำ” ในหน้าแรก</li>
@@ -361,7 +361,7 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
   <footer class="foot"><span class="dot" id="judgedot"></span><span id="judgetext">กำลังเชื่อมต่อกรรมการ…</span></footer>
 </div>
 
-<script src="firebase-config.js?v=202610240406"></script>
+<script src="firebase-config.js?v=202610241658"></script>
 <script>
 // เชื่อมเกมกับ Firebase แทนฐานข้อมูลของ Claude (ใช้เมื่อใส่ค่าใน firebase-config.js แล้ว)
 (() => {
@@ -596,6 +596,40 @@ const LINKS = `ทะเล: ปลา เรือ ทราย คลื่น
 สระว่ายน้ำ: น้ำ แว่นตาว่ายน้ำ
 สนาม: ลู่วิ่ง`;
 
+// หมวดคำ: คำในหมวดเดียวกันถือว่าความหมายเชื่อมกัน (ใช้กับกรรมการคลังคำในเครื่อง)
+const TOPICS = `สวนและต้นไม้: สวน ต้นไม้ ดอกไม้ ใบไม้ หญ้า ราก กิ่งไม้ ผีเสื้อ ผึ้ง ดิน ปุ๋ย กระถาง บัวรดน้ำ ชาวสวน ผลไม้ เมล็ด ดอกกุหลาบ ดอกบัว
+ทะเล: ทะเล ชายหาด ทราย คลื่น เกาะ ปู หอย ปลา ปะการัง เรือ ชาวประมง ฉลาม ปลาวาฬ วาฬ เต่า กุ้ง หมึก ครีมกันแดด แดด ปราสาททราย
+ท้องฟ้าและอากาศ: ท้องฟ้า เมฆ ฝน ฟ้าร้อง ฟ้าผ่า รุ้ง ลม พายุ ดวงอาทิตย์ ดวงจันทร์ ดาว แสงแดด หมอก หิมะ อากาศ
+อวกาศ: อวกาศ จรวด นักบินอวกาศ ดาวเทียม ดาว ดวงจันทร์ ดาวอังคาร กล้องโทรทรรศน์ มนุษย์ต่างดาว ยานอวกาศ
+บ้าน: บ้าน หลังคา ประตู หน้าต่าง ห้องนอน ห้องครัว ห้องน้ำ ห้องนั่งเล่น บันได รั้ว ครอบครัว เตียง โต๊ะ เก้าอี้ ตู้เย็น พัดลม โทรทัศน์ กุญแจ
+ครัว: ห้องครัว กระทะ หม้อ จาน ช้อน ส้อม ตะเกียบ มีด เตา ชาม แก้ว พ่อครัว อาหาร ข้าว ไข่ เกลือ น้ำตาล น้ำปลา พริก กระเทียม
+อาหารไทย: อาหาร ข้าวผัด ต้มยำ ส้มตำ แกงเขียวหวาน ก๋วยเตี๋ยว ผัดไทย ข้าวมันไก่ ขนมจีน น้ำพริก ข้าวเหนียว ลาบ ไก่ย่าง ปลาร้า กะปิ
+ผลไม้: ผลไม้ มะม่วง ทุเรียน มังคุด เงาะ ลำไย ลิ้นจี่ ส้ม แตงโม องุ่น สับปะรด มะละกอ กล้วย ฝรั่ง มะพร้าว ขนุน ชมพู่ มะขาม
+ผัก: ผัก ผักบุ้ง กะหล่ำปลี แตงกวา ถั่วงอก พริก มะเขือ ฟักทอง ข้าวโพด แครอท มะนาว ตะไคร้
+ตลาดและร้านค้า: ตลาด แม่ค้า ร้าน เงิน เหรียญ ธนบัตร ตะกร้า ถุง ลูกค้า ห้าง กระเป๋าสตางค์
+สัตว์เลี้ยงและฟาร์ม: หมา แมว วัว ควาย หมู ไก่ เป็ด ม้า แพะ แกะ คอก นม ไข่
+สัตว์ป่า: ป่า ช้าง เสือ ลิง สิงโต หมี กวาง งู จระเข้ ยีราฟ ม้าลาย นกฮูก
+แมลง: มด ผึ้ง ยุง แมลงวัน ผีเสื้อ แมงมุม ด้วง จิ้งหรีด
+นก: นก รังนก ปีก ขนนก นกฮูก อินทรี อีกา นกพิราบ
+โรงเรียน: โรงเรียน ครู นักเรียน ห้องเรียน กระดาน ชอล์ก หนังสือ สมุด ปากกา ดินสอ ยางลบ ไม้บรรทัด กระเป๋า การบ้าน ห้องสมุด ชุดนักเรียน
+ร่างกาย: ตา หู จมูก ปาก ฟัน ลิ้น มือ นิ้ว เท้า ขา แขน ผม หัว หัวใจ เลือด กระดูก
+สุขภาพ: โรงพยาบาล หมอ พยาบาล ยา เข็มฉีดยา คนไข้ รถพยาบาล ไข้ หมอฟัน
+การเดินทาง: รถ ถนน รถเมล์ รถไฟ เครื่องบิน เรือ จักรยาน แท็กซี่ สนามบิน สถานีรถไฟ ตั๋ว คนขับ ไฟจราจร ล้อ น้ำมัน หมวกกันน็อก กระเป๋าเดินทาง
+ดนตรี: ดนตรี เพลง นักร้อง กีตาร์ เปียโน กลอง ระนาด ขลุ่ย ไมโครโฟน เวที คอนเสิร์ต
+กีฬา: กีฬา ฟุตบอล นักกีฬา สนาม ลูกบอล ประตู มวยไทย นักมวย นวม สระว่ายน้ำ ลู่วิ่ง เหรียญทอง
+เสื้อผ้า: เสื้อ กางเกง กระโปรง รองเท้า ถุงเท้า หมวก ผ้า กระดุม เข็ม ด้าย เตารีด ตู้เสื้อผ้า
+ห้องน้ำ: ห้องน้ำ สบู่ ยาสีฟัน แปรงสีฟัน ฝักบัว ผ้าเช็ดตัว กระจก หวี
+นาและชนบท: นา ชาวนา ควาย ข้าว ฝน คันนา โคลน เคียว ยุ้งข้าว
+วัด: วัด พระ เจดีย์ โบสถ์ ธูป เทียน บาตร จีวร พระพุทธรูป
+เทศกาล: สงกรานต์ ลอยกระทง ปีใหม่ วันเกิด ของขวัญ เค้ก เทียน กระทง พลุ
+อาชีพ: ครู หมอ ตำรวจ ทหาร ชาวนา พ่อครัว นักร้อง นักบิน พยาบาล ช่าง แม่ค้า ชาวประมง บุรุษไปรษณีย์ นักดับเพลิง
+ไฟ: ไฟ ควัน เทียน ไม้ขีดไฟ เตา นักดับเพลิง เตาถ่าน ถ่าน
+น้ำ: น้ำ แม่น้ำ น้ำตก ฝน แก้ว ขวด น้ำแข็ง บ่อ คลอง ทะเล
+กลางคืน: กลางคืน ดวงจันทร์ ดาว ที่นอน หมอน ผ้าห่ม ความฝัน นกฮูก ไฟฉาย ห้องนอน
+เครื่องใช้ไฟฟ้า: คอมพิวเตอร์ โทรศัพท์ โทรทัศน์ วิทยุ กล้อง แบตเตอรี่ ปลั๊ก พัดลม ตู้เย็น
+ขนม: ขนม ขนมปัง เค้ก ไอศกรีม ช็อกโกแลต ลูกอม น้ำตาล นม แป้ง
+เครื่องดื่ม: กาแฟ ชา นม น้ำส้ม น้ำแข็ง แก้ว หลอด`;
+
 // คลังคำนามสำหรับคำแนะนำตอนพิมพ์ (ไม่ได้บอกว่าคำไหนเชื่อมกัน จึงไม่เฉลย)
 const EXTRA = `กา กบ กระดาษ กระต่าย กางเกง กาแฟ กุ้ง เก้าอี้ กล้อง กระเป๋า กรรไกร กวาง กะทิ กีฬา กระจก กุญแจ เกวียน ขา ข้าวเหนียว ขนม ขวด ขยะ ขนุน ขวาน ของขวัญ เข็ม ขนมปัง ขลุ่ย ขิง เขื่อน คน ครู เครื่องบิน คลอง ค้างคาว คางคก ครอบครัว คะแนน ควัน คลื่น คอ คาง โคม ครัว ฆ้อง งู งาน งา เงาะ จาน จมูก จักรยาน จิ้งจก จระเข้ จดหมาย จังหวัด จรวด จุด เจดีย์ แจกัน ฉลาม ฉิ่ง ฉาก ช้าง ชา ช้อน ชาม ชมพู่ ชาวนา ชุด ช่าง ชะนี เชือก ชิงช้า ซอง ซอย ซาลาเปา ซีอิ๊ว ญาติ ฐาน เณร ดาว ดิน ดอกไม้ เด็ก ดนตรี ดินสอ ด้าย แดด ดาบ ดอกบัว โดม ตา ต้นไม้ ตุ๊กตา ตะเกียบ เต่า ตู้เย็น ตำรวจ ตึก แตงโม โต๊ะ ตะกร้า ตั๋ว ตำนาน ถนน ถุง ถ้วย ถั่ว ถ้ำ ถาด ถุงเท้า ทะเล ทหาร ทอง ทุเรียน ทราย ทับทิม ทวีป ทูต ธง ธรรมชาติ ธนาคาร ธนู นก น้ำ นม นาฬิกา นักเรียน นิ้ว เนย น้ำแข็ง นางฟ้า นาค นาก นิทาน บ้าน บัว บันได บะหมี่ บึง ใบไม้ บริษัท บ่อ บวบ บาตร ปลา ปู ประตู ปากกา ปืน ป่า ปีก เป็ด แป้ง ประเทศ ปลาทู ปาก ปิ่นโต ปลาวาฬ ผม ผัก ผีเสื้อ ผ้า ผลไม้ ผึ้ง ผิว ผักบุ้ง ฝน ฝรั่ง ฝุ่น ฝา ฝ้าย พ่อ พระ พริก พัดลม เพลง เพื่อน แพะ พลอย พายุ พจนานุกรม พรม ฟัน ฟ้า ไฟ ไฟฉาย ฟาง ฟักทอง ฟอง ภูเขา ภาษา ภาพ ภาชนะ แม่ แมว มะม่วง มด มือ ม้า มะพร้าว เมฆ เมือง มีด มะนาว ไม้ มังคุด มะละกอ ยาย ยา ยักษ์ ยีราฟ ยุง ยาง ยานอวกาศ รถ ร่ม เรือ รองเท้า โรงเรียน รุ้ง ราชินี ราง ร้าน ไร่ ระฆัง รูป รั้ว ลิง ลม ลูก ลำไย ล้อ โลก ลาบ ลิ้นจี่ ลำธาร ลูกโป่ง เลื่อย วัว วัด ว่าว แว่นตา วิทยุ วาฬ วุ้นเส้น วิชา ศาลา ศิลปะ ศีรษะ ศาสนา สุนัข เสือ สิงโต สวน สะพาน สมุด เสื้อ สับปะรด ส้ม แสง สบู่ สมอง สนาม หมา หมู หมี หนังสือ หัวใจ หิมะ เห็ด หญ้า หลังคา หน้าต่าง หอย หนู หมวก หม้อ หมึก หาด หิน หนอน อาหาร อากาศ อูฐ อ้อย อินทรี องุ่น อวกาศ อิฐ อาจารย์ อีกา อ่าง`;
 
@@ -613,7 +647,7 @@ const SYN = Object.fromEntries(`สุนัข=หมา ตะวัน=ดว
 // ส่วนของคำที่ใช้ตรวจคำประสมซ้ำ (ต้นไม้ → ดอกไม้)
 const PARTS = `ต้น ดอก ผล ใบ ราก กิ่ง หัว ตา หู มือ เท้า ขา ปาก แม่ พ่อ น้ำ ไม้ ไฟ ฟ้า ดิน หิน ลม ฝน ข้าว ผ้า รถ เรือ บ้าน ห้อง ร้าน โรง นก ปลา ไก่ หมู วัว ผัก ขนม เสื้อ ถุง ขวด จาน หม้อ แก้ว ทาง ประตู สวน นา ป่า เขา ทะเล ตู้ โต๊ะ เตียง กล้อง ไข่ เนื้อ นม ทอง เงิน เหล็ก แสง เสียง`.split(/\s+/);
 const STOP = new Set("นัก การ ความ ผู้ ที่ เครื่อง ลูก ตัว ชาว ของ หมาก บะ".split(" ")); // คำนำหน้าที่ใช้ร่วมกันได้
-const NOSPLIT = new Set("ตาราง ปากกา กาแฟ นาฬิกา ตาล".split(" ")); // ดูเหมือนคำประสมแต่เป็นคำเดียว
+const NOSPLIT = new Set("ตาราง ปากกา กาแฟ นาฬิกา ตาล ครอบครัว น้ำตาล หัวใจ บัวรดน้ำ".split(" ")); // ดูเหมือนคำประสมแต่เป็นคำเดียว
 
 // ================= อักษรไทย =================
 const LEAD = "เแโใไ";
@@ -673,6 +707,21 @@ function buildGraph() {
 }
 buildGraph();
 const linked = (a, b) => !!graph[a]?.has(b);
+const TOPIC_OF = {}, TOPIC_WORDS = [];
+for (const line of TOPICS.split("\n")) {
+  const [name, rest] = line.split(":"), ws = rest.trim().split(/\s+/);
+  TOPIC_WORDS.push({ name: name.trim(), ws });
+  for (const w of ws) (TOPIC_OF[w] ||= []).push(TOPIC_WORDS.length - 1);
+}
+const sameTopic = (a, b) => (TOPIC_OF[a] || []).find(i => (TOPIC_OF[b] || []).includes(i));
+// เชื่อมกันไหม: คู่ในคลัง หรือ อยู่หมวดเดียวกัน (เทียบจากความหมายภาษากลาง)
+function relation(a, b) {
+  const ca = canon(a), cb = canon(b);
+  if (linked(ca, cb)) return "อยู่ในคลังคำ";
+  const t = sameTopic(ca, cb);
+  return t !== undefined ? `หมวดเดียวกัน: ${TOPIC_WORDS[t].name}` : null;
+}
+const knownWord = w => !!(graph[canon(w)] || TOPIC_OF[canon(w)]);
 
 const REGIONS = ["อีสาน", "เหนือ", "ใต้"];
 const DIA = {}, DIA_OF = {};
@@ -691,7 +740,7 @@ const LOAN_ALL = [...new Set([...LOAN, ...Object.keys(LOANMEAN)])];
 const isLoan = w => LOAN_ALL.some(l => w === l || (l.length >= 3 && w.includes(l)));
 const canon = w => DIA[w]?.m ?? LOANMEAN[w] ?? SYN[w] ?? w;
 
-const BANK = [...new Set([...Object.keys(graph), ...EXTRA.split(/\s+/), ...learned])];
+const BANK = [...new Set([...Object.keys(graph), ...Object.keys(TOPIC_OF), ...EXTRA.split(/\s+/), ...learned])];
 let KNOWN = null;
 bankReady = true;
 function learn(w) { if (BANK.includes(w)) return; BANK.push(w); learned.push(w); store.set("ktc-bank", learned); KNOWN = null }
@@ -758,10 +807,17 @@ function sharedPart(w) {
 // คำที่ต่อได้จากคลังคำในเครื่อง ตามกติกาที่ตั้งไว้
 function options(from) {
   const r = rules(), used = usedSet();
+  const near = c => [...(graph[c] || []), ...(TOPIC_OF[c] || []).flatMap(i => TOPIC_WORDS[i].ws)].filter(w => w !== c);
   const list = !from ? Object.keys(graph).filter(w => graph[w].size >= (isRegion() ? 1 : 4)).flatMap(formsOf)
-    : [...(graph[canon(from)] || [])].flatMap(formsOf)
+    : near(canon(from)).flatMap(formsOf)
       .filter(w => !used.has(w) && !takenMeaning(w) && !sharedPart(w) && (!r.letter || firstOf(w) === lastOf(from)));
   return [...new Set(r.loan === "ban" ? list.filter(w => !isLoan(w)) : list)];
+}
+// ตัวอย่างคำที่ไม่ซ้ำความหมายกันเอง (ไม่ให้ขึ้น บ้าน เฮือน เฮาส์ พร้อมกัน)
+function distinctMeaning(list, n) {
+  const seen = new Set(), out = [];
+  for (const w of list) { const c = canon(w); if (!seen.has(c)) { seen.add(c); out.push(w); if (out.length >= n) break } }
+  return out;
 }
 function metaFrom(w, d, m) {
   if (DIA[w]) return { dia: diaLabel(w), mean: DIA[w].m };
@@ -840,7 +896,7 @@ function doEliminate(i, reason) {
 function finish(winner, reason) {
   G.over = true; G.turnEndsAt = null; G.msg = null;
   const len = words().length, solo = G.players.length === 1, from = prev();
-  const ex = from ? options(from).slice(0, 3) : [];
+  const ex = from ? distinctMeaning(options(from), 3) : [];
   const ranking = [...G.players].sort((a, b) => b.score - a.score).map(p => `${p.name} ${p.score}`).join(" · ");
   G.result = {
     winner: winner ? winner.id : null,
@@ -863,7 +919,7 @@ function act(mutate) {
   G.rev = base + 1; token++; note = null; busy = false; pausedLeft = null; lastTick = null;
   if (sound) sfx(sound === "end" ? endSound() : sound);
   afterChange();
-  if (mode === "online") pushGame(JSON.parse(JSON.stringify(G)), base);
+  if (mode === "online") { G.localEnds = G.turnEndsAt; pushGame(forPush(), base) }
 }
 function afterChange() {
   if (G.over) recordStats();
@@ -923,13 +979,14 @@ async function judgeWord(from, w, withReply) {
       if (!dropClaude(e)) return { retry: e?.code === "rate_limited" ? "ใช้ Claude ถี่เกินไป รอสักครู่แล้วส่งอีกครั้ง (ไม่เสียตา)" : "ตรวจคำไม่สำเร็จ กดส่งอีกครั้งได้ ไม่เสียตา" };
     }
   }
-  // กรรมการในเครื่อง
+  // กรรมการในเครื่อง: ผ่านเมื่อรู้ว่าเชื่อมกัน ถ้าไม่แน่ใจไม่ปรับ ให้ลองคำอื่น (ปรับเฉพาะผิดกติกาที่แน่นอน เช่น คำซ้ำ)
   if (!from) {
-    if (!graph[canon(w)]) return { err: `คลังคำในเครื่องยังไม่รู้จัก “${w}” ลองคำอื่น เช่น ${options(null).slice(0, 4).join(" ")}` };
+    if (!knownWord(w)) return { err: `ระบบยังไม่รู้จัก “${w}” ไม่ปรับ ลองคำอื่น เช่น ${distinctMeaning(options(null), 4).join(" ")}` };
     return { valid: true, reason: "คำแรก", meta: metaFrom(w) };
   }
-  if (!linked(canon(from), canon(w))) return { valid: false, reason: `คลังคำไม่มีความเชื่อมโยงระหว่าง “${from}” กับ “${w}”`, meta: metaFrom(w) };
-  return { valid: true, reason: "อยู่ในคลังคำ", meta: metaFrom(w) };
+  const rel = relation(from, w);
+  if (rel) return { valid: true, reason: rel, meta: metaFrom(w) };
+  return { err: `ระบบยังไม่รู้ว่า “${from}” กับ “${w}” เชื่อมกัน ไม่ปรับ ลองคำอื่น${knownWord(from) ? ` เช่น ${distinctMeaning(options(from), 3).map(x => x.slice(0, 1) + "…").join(" ")}` : ""}` };
 }
 
 async function submit() {
@@ -993,13 +1050,16 @@ function scheduleBot() {
   })();
 }
 
-// ================= นาฬิกา (นับจากเวลาสิ้นสุดของตา ใช้แบบเดียวกันทุกเครื่อง) =================
+// ================= นาฬิกา =================
+// ออนไลน์: นับจากตอนเครื่องนี้ได้รับตาใหม่ ไม่ใช้นาฬิกาของอีกเครื่องตรงๆ (กันนาฬิกามือถือไม่ตรงกันแล้วหมดเวลาเร็ว)
 let lastTick = null;
+const deadline = () => G?.localEnds ?? G?.turnEndsAt ?? null;
+function forPush() { const out = JSON.parse(JSON.stringify(G)); delete out.localEnds; out.writtenAt = Date.now(); return out }
 function tick() {
   if (!G || $("game").hidden) return;
   drawTimer(); renderTyping();
-  if (G.over || !G.turnEndsAt || busy) return;
-  const left = (G.turnEndsAt - Date.now()) / 1000;
+  if (G.over || !deadline() || busy) return;
+  const left = (deadline() - Date.now()) / 1000;
   if (isMine() && left > 0 && left <= 5 && Math.ceil(left) !== lastTick) { lastTick = Math.ceil(left); sfx("tick") }
   if (left > 0) return;
   if (mode === "local") { if (!cur().bot) act(() => doPenalty(G.turn, "หมดเวลา")) }
@@ -1008,8 +1068,8 @@ function tick() {
 }
 function watchRank() { const ids = alive().filter(p => p !== cur()).map(p => p.id); const i = ids.indexOf(me.id); return i < 0 ? 99 : i }
 function drawTimer() {
-  const t = G.cfg.time, on = !!(t && G.turnEndsAt && !G.over);
-  const left = !on ? t : busy && pausedLeft != null ? pausedLeft / 1000 : (G.turnEndsAt - Date.now()) / 1000;
+  const t = G.cfg.time, on = !!(t && deadline() && !G.over);
+  const left = !on ? t : busy && pausedLeft != null ? pausedLeft / 1000 : (deadline() - Date.now()) / 1000;
   const total = t * (G.started ? 1 : 2);
   $("bar").style.width = (on ? Math.max(0, Math.min(1, left / total)) * 100 : 100) + "%";
   $("timer").classList.toggle("low", on && left <= 5);
@@ -1092,10 +1152,12 @@ function render() {
   $("over").hidden = !G.over;
   if (G.over && G.result) {
     $("overtitle").textContent = G.result.title; $("overtext").textContent = G.result.text;
-    const host = mode === "online" && room.data?.host === me.id;
+    const host = mode === "online" && hostId() === me.id;
     $("again").hidden = mode === "online" && !host;
     $("leave").textContent = mode === "online" ? "ออกจากห้อง" : "กลับหน้าแรก";
-    if (mode === "online" && !host && !note) note = { text: "รอเจ้าของห้องเริ่มรอบใหม่ หรือออกจากห้อง", kind: "" };
+    const WAIT = "รอเจ้าของห้องเริ่มรอบใหม่ หรือออกจากห้อง";
+    if (mode === "online" && !host && !note) note = { text: WAIT, kind: "" };
+    if (host && note?.text === WAIT) note = null;
   }
   drawMsg(); drawTimer(); updateAssist(); renderTyping();
 }
@@ -1217,7 +1279,7 @@ async function hint() {
   const from = prev(), myTok = token;
   const mask = w => w.slice(0, Math.ceil(w.length / 2)) + "•".repeat(w.length - Math.ceil(w.length / 2));
   const local = options(from);
-  if (!from) { setNote(`ลองเริ่มด้วย: ${local.sort(() => Math.random() - .5).slice(0, 3).join(" · ")}`); return }
+  if (!from) { setNote(`ลองเริ่มด้วย: ${distinctMeaning(local.sort(() => Math.random() - .5), 3).join(" · ")}`); return }
   if (local.length) { setNote(`คำใบ้: ${mask(local[Math.floor(Math.random() * local.length)])}`); return }
   if (judge !== "claude") { setNote(`คลังคำไม่มีคำที่ต่อจาก “${from}” แล้ว`); return }
   $("hint").disabled = true; setNote("กำลังหาคำใบ้…");
@@ -1402,8 +1464,11 @@ async function enterRoom(code) {
     room.players = s.docs.map(d => d.data()).filter(Boolean);
     if (before && room.players.length > before) sfx("join");
     renderRoom();
+    if (G && !$("game").hidden) render(); // เจ้าของห้องอาจเปลี่ยน ปุ่มเล่นอีกรอบต้องอัปเดต
   }, () => {});
 }
+// เจ้าของห้องจริง ถ้าออกจากห้องไปแล้ว ให้คนที่อยู่ในห้องนานที่สุดเป็นแทน
+function hostId() { const d = room.data, list = roomPlayers(); return list.some(p => p.id === d?.host) ? d?.host : list[0]?.id ?? d?.host }
 // คนเดียวกันอาจกลับมาด้วยตัวตนใหม่ (เบราว์เซอร์ในแอปจำการล็อกอินไม่ได้) ให้นับชื่อละหนึ่งคน ใช้รายการล่าสุด
 function roomPlayers() { return [...new Map(room.players.map(p => [String(p.name).trim(), p])).values()] }
 function leaveSubs() { room.unsub?.(); room.unsubPlayers?.(); room.unsubLive?.(); room.unsub = room.unsubPlayers = room.unsubLive = null; room.typing = null }
@@ -1434,7 +1499,8 @@ function maybeReclaim() {
   G.players[i].id = me.id;
   if (G.turn === i) resetDeadline();
   G.rev = base + 1; token++;
-  pushGame(JSON.parse(JSON.stringify(G)), base);
+  G.localEnds = G.turnEndsAt;
+  pushGame(forPush(), base);
   setNote(`กลับเข้าที่นั่งของ ${me.name} แล้ว เล่นต่อได้เลย`, "ok");
 }
 // ข้อมูลห้องเปลี่ยน (จากเครื่องเราเองหรือของเพื่อน)
@@ -1448,6 +1514,7 @@ function onRoom(d) {
   if (G && g.id === G.id && g.rev <= G.rev) { if (G.over) render(); return }
   const old = G && G.id === g.id ? G : null;
   G = JSON.parse(JSON.stringify(g));
+  G.localEnds = G.turnEndsAt && G.writtenAt ? Date.now() + (G.turnEndsAt - G.writtenAt) : G.turnEndsAt;
   token++; busy = false; pausedLeft = null; note = null; lastTick = null;
   if ($("game").hidden) { show("game"); sfx("start") }
   maybeReclaim();
@@ -1466,7 +1533,9 @@ async function pushGame(game, base) {
   const ref = room.ref; if (!ref) return;
   const next = d => !d || !d.game || d.game.id !== game.id || d.game.rev !== base ? null
     : { ...d, game, status: game.over ? "over" : "playing", updatedAt: Date.now() };
-  const adopt = d => { if (d && room.ref === ref) { G = null; onRoom(d) } }; // มีคนเปลี่ยนก่อน ใช้สถานะในห้อง
+  const adopt = d => { // มีคนเปลี่ยนก่อน ใช้สถานะในห้อง และบอกว่าการกระทำนี้ไม่ถูกบันทึก
+    if (d && room.ref === ref) { G = null; onRoom(d); if (G && !G.over) setNote("สถานะเกมเปลี่ยนก่อนที่จะบันทึก ลองอีกครั้งถ้ายังเป็นตาของคุณ", "err") }
+  };
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
       if (ref.swapGame) {
@@ -1510,26 +1579,26 @@ function renderTyping() {
 }
 
 function renderRoom() {
-  const d = room.data, host = d?.host === me.id;
+  const d = room.data, host = hostId() === me.id;
   const ul = $("roomplayers"), list = roomPlayers(); ul.innerHTML = "";
   for (const p of list) {
     const li = document.createElement("li"); li.textContent = p.name + (p.id === me.id ? " (คุณ)" : "");
-    if (p.id === d?.host) { const s = document.createElement("small"); s.textContent = "เจ้าของห้อง"; li.append(s) }
+    if (p.id === hostId()) { const s = document.createElement("small"); s.textContent = "เจ้าของห้อง"; li.append(s) }
     ul.append(li);
   }
   $("roomcount").textContent = list.length;
   $("roomrules").textContent = d ? "กติกา: " + rulesSummary(d.cfg) : "";
   $("roomstart").hidden = !host;
   $("roomstart").disabled = list.length < 2;
-  $("roomwait").textContent = !d ? "กำลังเข้าห้อง…" : host ? (list.length < 2 ? "รอเพื่อนเข้าห้องอย่างน้อย 1 คน" : "พร้อมแล้ว กดเริ่มเกมได้เลย") : `รอ ${d.hostName} เริ่มเกม`;
+  $("roomwait").textContent = !d ? "กำลังเข้าห้อง…" : host ? (list.length < 2 ? "รอเพื่อนเข้าห้องอย่างน้อย 1 คน" : "พร้อมแล้ว กดเริ่มเกมได้เลย") : `รอ ${list.find(p => p.id === hostId())?.name || d.hostName} เริ่มเกม`;
 }
 async function startOnline() {
-  const d = room.data; if (!d || d.host !== me.id) return;
+  const d = room.data; if (!d || hostId() !== me.id) return;
   const list = roomPlayers();
   if (list.length < 2) { setNote("ต้องมีผู้เล่นในห้องอย่างน้อย 2 คน", "err"); return }
   const keep = G; mode = "online";
   G = newGameState(list.map(p => ({ id: p.id, name: p.name })), d.cfg); resetDeadline();
-  const g = G; G = keep;
+  const g = forPush(); G = keep;
   try { await room.ref.set({ ...d, status: "playing", game: g, updatedAt: Date.now() }) } catch (e) { onlineError(e) }
 }
 
