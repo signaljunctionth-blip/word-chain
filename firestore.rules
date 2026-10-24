@@ -14,6 +14,10 @@ service cloud.firestore {
         allow write: if request.auth != null && request.auth.uid == pid;
       }
     }
+    // คลังคำออนไลน์ที่ทุกคนช่วยกันเพิ่ม
+    match /vocab/{doc} {
+      allow read, write: if request.auth != null;
+    }
     // สิทธิ์เขียนชั่วคราว กันสองคนแก้เกมพร้อมกัน
     match /leases/{id} {
       allow read, write: if request.auth != null;

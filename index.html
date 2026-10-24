@@ -97,6 +97,10 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
 .vocablist span { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 3px 4px 3px 12px }
 .vocablist button { width: 22px; height: 22px; border-radius: 50%; color: var(--muted); font-size: .9rem }
 .vocablist button:hover { color: var(--hot); background: var(--hot-soft) }
+.vocablist button.ok { color: var(--good) }
+.vocablist button.ok:hover { color: var(--surface); background: var(--good) }
+.vocablist .pending { border-style: dashed }
+#olall summary { cursor: pointer; margin-bottom: 6px }
 .join { display: flex; gap: 8px }
 .join .text:placeholder-shown { letter-spacing: normal; font-weight: 400 }
 .checkout { display: grid; gap: 6px; font-size: .9rem }
@@ -222,7 +226,7 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
       <li>ตอบได้ครั้งเดียวต่อตา ตอบผิดกติกาหรือหมดเวลาเสีย 1 ชีวิตและเสียตา ชีวิตหมดหรือยอมแพ้ = ตกรอบ ถ้าระบบไม่แน่ใจว่าเชื่อมกัน จะไม่ปรับ ให้ลองคำอื่น</li>
       <li>ห้ามซ้ำ ทั้งคำเดิม ส่วนของคำ (น้ำ → แม่น้ำ, ต้นไม้ → ดอกไม้) และความหมายเดิม (สี → คัลเลอร์, ตลาด → กาด)</li>
       <li>ใช้ภาษาถิ่นและคำทับศัพท์ได้ตามกติกาที่ตั้งไว้</li>
-      <li>เพิ่มคู่คำที่เชื่อมกันเองได้ที่ “คลังคำ” ในหน้าแรก</li>
+      <li>เพิ่มคู่คำที่เชื่อมกันเองได้ที่ “คลังคำ” ในหน้าแรก แชร์ขึ้นคลังคำออนไลน์ให้ทุกคนใช้ได้ เมื่อมีคนยืนยันครบ 2 คน</li>
       <li>ตัวช่วยพิมพ์: แตะคำแนะนำเพื่อส่งทันที · <b>Tab</b> เติมคำแรก · <b>Esc</b> ล้าง · ลืมเปลี่ยนภาษาระบบแปลงให้</li>
     </ol>
     <p class="small" id="statsline"></p>
@@ -282,8 +286,13 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
           <input class="text" id="vlinks" lang="th" maxlength="120" placeholder="คำที่เชื่อมกัน เช่น ปลา เรือ ทราย" aria-label="คำที่เชื่อมกัน คั่นด้วยเว้นวรรค">
           <button class="pill" type="submit">เพิ่ม</button>
         </form>
+        <div class="row"><button class="pill ghost" type="button" id="vshare">แชร์ขึ้นคลังคำออนไลน์</button></div>
         <p class="small" id="vocabmsg"></p>
         <div class="vocablist" id="vocablist"></div>
+        <h3>คลังคำออนไลน์ · <span id="olsum">กำลังเชื่อมต่อ…</span></h3>
+        <p class="small">คู่คำที่ผู้เล่นทุกคนช่วยกันเพิ่ม ใช้ได้ทุกเกมเมื่อมีคนยืนยันครบ 2 คน ถ้ามีคนแจ้งว่าไม่เหมาะสม 2 คน จะถูกซ่อน</p>
+        <div class="vocablist" id="olpending"></div>
+        <details id="olall"><summary class="small">ดูคู่คำออนไลน์ที่ใช้ได้แล้ว</summary><div class="vocablist" id="olactive"></div></details>
         <h3>ตรวจคำ</h3>
         <form class="vocabform" id="checkform" autocomplete="off">
           <input class="text" id="cword" lang="th" maxlength="30" placeholder="คำก่อนหน้า เช่น ทะเล" aria-label="คำก่อนหน้า">
@@ -361,7 +370,7 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
   <footer class="foot"><span class="dot" id="judgedot"></span><span id="judgetext">กำลังเชื่อมต่อกรรมการ…</span></footer>
 </div>
 
-<script src="firebase-config.js?v=202610241658"></script>
+<script src="firebase-config.js?v=202610242132"></script>
 <script>
 // เชื่อมเกมกับ Firebase แทนฐานข้อมูลของ Claude (ใช้เมื่อใส่ค่าใน firebase-config.js แล้ว)
 (() => {
@@ -389,6 +398,8 @@ details.rules .opts { display: grid; gap: 14px; margin-top: 14px }
         return { acquired: true, holder };
       });
     };
+    // เขียนแบบรวมข้อมูลกับของเดิม (ใช้กับคลังคำออนไลน์)
+    firebase.firestore.DocumentReference.prototype.mergeSet = function (d) { return this.set(d, { merge: true }) };
     // อ่าน-ตรวจ-เขียนสถานะเกมในธุรกรรมเดียว (เร็วกว่าและไม่ต้องรอสิทธิ์เขียน)
     firebase.firestore.DocumentReference.prototype.swapGame = function (next) {
       return fs.runTransaction(async t => {
@@ -698,11 +709,12 @@ function link(a, b) { if (!a || !b || a === b) return; (graph[a] ||= new Set()).
 // คู่คำที่ผู้เล่นเพิ่มเอง [คำ, คำที่เชื่อมกัน] เก็บในเครื่อง และคู่คำของห้องออนไลน์ที่เจ้าของห้องแชร์มา
 let myLinks = store.get("ktc-mylinks", []);
 let roomLinks = [];
+let onlineLinks = []; // คู่คำจากคลังคำออนไลน์ที่ยืนยันแล้ว ใช้ได้ทุกเกม
 let bankReady = false; // BANK ถูกสร้างทีหลัง จึงเติมคำเข้า BANK ได้หลังจากนั้นเท่านั้น
 function buildGraph() {
   for (const k in graph) delete graph[k];
   for (const line of LINKS.split("\n")) { const [a, rest] = line.split(":"); for (const b of rest.trim().split(/\s+/)) link(a.trim(), b) }
-  for (const [a, b] of [...myLinks, ...roomLinks]) link(a, b);
+  for (const [a, b] of [...myLinks, ...roomLinks, ...onlineLinks]) link(a, b);
   if (bankReady) { for (const w of Object.keys(graph)) if (!BANK.includes(w)) BANK.push(w); KNOWN = null }
 }
 buildGraph();
@@ -1374,7 +1386,8 @@ async function onlineInit() {
     try { const n = (await room.user?.name?.()) || ""; if (n) { me.name = n.slice(0, 20); store.set("ktc-myname", me.name); if (document.activeElement !== $("myname")) $("myname").value = me.name } } catch {}
   }
   room.ready = true;
-  renderOnlineNote();
+  watchVocab();
+  renderOnlineNote(); renderVocab();
   if (pendingJoin && !$("home").hidden) {
     const c = pendingJoin; pendingJoin = null;
     if (me.name && onlineReady()) joinRoom(c);
@@ -1605,7 +1618,8 @@ async function startOnline() {
 // ================= คลังคำของฉัน =================
 function renderVocab() {
   const words = new Set(Object.keys(graph)), pairs = Object.values(graph).reduce((n, s) => n + s.size, 0) / 2;
-  $("vocabsum").textContent = `${words.size} คำ · ${pairs} คู่${myLinks.length ? ` · ของคุณ ${myLinks.length} คู่` : ""}`;
+  $("vocabsum").textContent = `${words.size} คำ · ${pairs} คู่${myLinks.length ? ` · ของคุณ ${myLinks.length} คู่` : ""}${onlineLinks.length ? ` · ออนไลน์ ${onlineLinks.length} คู่` : ""}`;
+  if (typeof renderOnlineVocab === "function") renderOnlineVocab();
   const box = $("vocablist"); box.innerHTML = "";
   const byWord = {};
   for (const [a, b] of myLinks) (byWord[a] ||= []).push(b);
@@ -1630,6 +1644,78 @@ $("vocabform").addEventListener("submit", e => {
   msg.className = "small"; msg.textContent = added ? `เพิ่ม ${added} คู่: ${a} → ${bs.join(", ")}` : "คู่คำนี้มีอยู่ในคลังแล้ว";
   $("vword").value = ""; $("vlinks").value = ""; $("vword").focus();
 });
+
+// ================= คลังคำออนไลน์ (ทุกคนช่วยกันเพิ่ม เก็บในเอกสารเดียว อ่านครั้งเดียวต่อการเปิดเกม) =================
+const vocabOnline = { ref: null, pairs: {} };
+const pairId = (a, b) => { let h = 2166136261; for (const ch of [a, b].sort().join("|")) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619) >>> 0 } return "p" + h.toString(16) };
+const votesOf = e => Object.keys(e?.votes || {}).length, reportsOf = e => Object.keys(e?.reports || {}).length;
+const isActive = e => votesOf(e) >= 2 && reportsOf(e) < 2;
+function watchVocab() {
+  if (!room.db || vocabOnline.ref) return;
+  try {
+    vocabOnline.ref = room.db.doc("vocab/shared");
+    vocabOnline.ref.onSnapshot(s => {
+      vocabOnline.pairs = (s.exists && s.data().pairs) || {};
+      const next = Object.values(vocabOnline.pairs).filter(e => e && THAI.test(e.a || "") && THAI.test(e.b || "") && isActive(e)).map(e => [e.a, e.b]).sort();
+      if (JSON.stringify(next) !== JSON.stringify(onlineLinks)) { onlineLinks = next; buildGraph() }
+      renderVocab();
+    }, () => { vocabOnline.ref = null; renderVocab() });
+  } catch { vocabOnline.ref = null }
+}
+// เขียนแบบรวมข้อมูล (ไม่ทับของคนอื่น): Firebase ใช้ set แบบ merge, ฐานข้อมูลของ Claude ใช้ update ที่รวมวัตถุซ้อนให้อยู่แล้ว
+async function vocabWrite(patch) {
+  const ref = vocabOnline.ref;
+  if (ref.mergeSet) return ref.mergeSet(patch);
+  try { await ref.update(patch) }
+  catch (e) { const s = await ref.get(); if (s.exists) throw e; await ref.set(patch) } // ยังไม่มีเอกสาร สร้างใหม่
+}
+async function shareOnline(a, bs, verified) {
+  if (!vocabOnline.ref || !me.id) return { err: "ยังเชื่อมต่อคลังคำออนไลน์ไม่ได้" };
+  if (!me.name) me.name = ($("myname").value || "").trim();
+  const today = new Date().toDateString(), q = store.get("ktc-share", { d: today, n: 0 });
+  if (q.d !== today) { q.d = today; q.n = 0 }
+  const fresh = [...new Set(bs)].filter(b => b !== a && !relation(a, b) && !vocabOnline.pairs[pairId(a, b)]);
+  if (!fresh.length) return { err: "คู่คำนี้มีในคลังอยู่แล้ว" };
+  if (q.n + fresh.length > 30) return { err: "วันนี้แชร์ครบ 30 คู่แล้ว พรุ่งนี้แชร์ต่อได้" };
+  const patch = { pairs: {} };
+  for (const b of fresh) patch.pairs[pairId(a, b)] = { a, b, by: me.id, byName: me.name || "", at: Date.now(), votes: { [me.id]: true, ...(verified ? { claude: true } : {}) }, reports: {} };
+  try { await vocabWrite(patch) } catch (e) { return { err: e?.code === "invalid_argument" || e?.code === "permission-denied" ? "บัญชีนี้แชร์ขึ้นคลังออนไลน์ไม่ได้ (สิทธิ์แค่ดู)" : "แชร์ไม่สำเร็จ ลองอีกครั้ง" } }
+  q.n += fresh.length; store.set("ktc-share", q);
+  return { ok: `แชร์ ${fresh.length} คู่ขึ้นคลังออนไลน์แล้ว${verified ? " Claude ยืนยันแล้ว ใช้ได้ทันที" : " รอเพื่อนยืนยันอีก 1 คน"}` };
+}
+async function markPair(id, field) {
+  try { await vocabWrite({ pairs: { [id]: { [field]: { [me.id]: true } } } }) }
+  catch { $("vocabmsg").className = "small err"; $("vocabmsg").textContent = "บันทึกไม่สำเร็จ ลองอีกครั้ง" }
+}
+function renderOnlineVocab() {
+  const sum = $("olsum"), pend = $("olpending"), act = $("olactive");
+  pend.innerHTML = ""; act.innerHTML = "";
+  if (!vocabOnline.ref) { sum.textContent = room.ready ? "ใช้ได้เมื่อเชื่อมต่อออนไลน์" : "กำลังเชื่อมต่อ…"; $("vshare").disabled = true; return }
+  $("vshare").disabled = false;
+  const all = Object.entries(vocabOnline.pairs).filter(([, e]) => e && e.a && e.b && reportsOf(e) < 2);
+  const active = all.filter(([, e]) => isActive(e)), waiting = all.filter(([, e]) => !isActive(e));
+  sum.textContent = `ใช้ได้ ${active.length} คู่ · รอยืนยัน ${waiting.length} คู่`;
+  const chip = ([id, e], pending) => {
+    const c = document.createElement("span"); if (pending) c.className = "pending";
+    c.textContent = `${e.a} → ${e.b}${pending ? ` · ${votesOf(e)}/2` : ""}${e.byName ? ` · ${e.byName}` : ""}${e.votes?.claude ? " · Claude ยืนยัน" : ""}`;
+    if (pending && !e.votes?.[me.id]) { const ok = document.createElement("button"); ok.type = "button"; ok.className = "ok"; ok.textContent = "✓"; ok.title = "ยืนยันว่าเชื่อมกัน"; ok.setAttribute("aria-label", `ยืนยัน ${e.a} กับ ${e.b}`); ok.onclick = () => markPair(id, "votes"); c.append(ok) }
+    if (!e.reports?.[me.id]) { const rp = document.createElement("button"); rp.type = "button"; rp.textContent = "⚑"; rp.title = "แจ้งว่าไม่เหมาะสมหรือไม่เชื่อมกัน"; rp.setAttribute("aria-label", `แจ้งลบ ${e.a} กับ ${e.b}`); rp.onclick = () => markPair(id, "reports"); c.append(rp) }
+    return c;
+  };
+  waiting.sort((x, y) => y[1].at - x[1].at).slice(0, 40).forEach(x => pend.append(chip(x, true)));
+  active.sort((x, y) => y[1].at - x[1].at).slice(0, 150).forEach(x => act.append(chip(x, false)));
+}
+$("vshare").onclick = async () => {
+  const fix = v => cfg.autofix ? toThai(v) : v, msg = $("vocabmsg");
+  const a = norm(fix($("vword").value)), bs = fix($("vlinks").value).split(/[\s,]+/).map(norm).filter(Boolean);
+  if (!a || !bs.length) { msg.className = "small err"; msg.textContent = "ใส่คำ และคำที่เชื่อมกันอย่างน้อย 1 คำ"; return }
+  if (![a, ...bs].every(w => THAI.test(w) && w.length <= 30)) { msg.className = "small err"; msg.textContent = "ใช้ได้เฉพาะตัวอักษรไทย"; return }
+  $("vshare").disabled = true;
+  const r = await shareOnline(a, bs, false);
+  $("vshare").disabled = false;
+  msg.className = "small" + (r.err ? " err" : ""); msg.textContent = r.err || r.ok;
+  if (r.ok) { $("vword").value = ""; $("vlinks").value = "" }
+};
 
 // ตัวช่วยตรวจคำ: ดูว่าคำเชื่อมกันในคลังไหม ความหมาย ภาษาถิ่น/ทับศัพท์ และคำที่ต่อได้ ถามกรรมการ Claude ได้ถ้ามี
 function wordInfo(w) {
@@ -1680,6 +1766,11 @@ async function runCheck() {
         const add = document.createElement("button"); add.type = "button"; add.className = "pill"; add.textContent = `เพิ่ม “${a} → ${b}” เข้าคลังคำของฉัน`;
         add.onclick = () => { myLinks.push([a, b]); store.set("ktc-mylinks", myLinks); buildGraph(); renderVocab(); add.replaceWith(line("ok", "เพิ่มแล้ว")) };
         out.append(add);
+        if (vocabOnline.ref) {
+          const share = document.createElement("button"); share.type = "button"; share.className = "pill ghost"; share.textContent = "แชร์ขึ้นคลังคำออนไลน์ (Claude ยืนยันแล้ว)";
+          share.onclick = async () => { share.disabled = true; const r = await shareOnline(a, [b], true); share.replaceWith(line(r.err ? "no" : "ok", r.err || r.ok)) };
+          out.append(share);
+        }
       }
     };
     out.append(ask);
